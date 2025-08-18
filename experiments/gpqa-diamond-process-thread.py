@@ -87,11 +87,35 @@ def process_split():
 
     return quant_dataset, qual_dataset
 
+def clean_mcq():
+    def extract_reference(text, ans):
+        lines = text.splitlines()
+        for line in lines:
+            if f"{ans}." == line[:2]:
+                return line[2:]
+        print(lines)
+
+    qual_path = "../../experiments/gpqa_diamond_qualitative.csv"
+    quant_path = "../../experiments/gpqa_diamond_quantitative.csv"
+    qual = pd.read_csv(qual_path)
+    quant = pd.read_csv(quant_path)
+
+    qual['reference'] = qual.apply(lambda row: extract_reference(row['question'], row['answer']), axis=1)
+    qual['question_mcq'] = qual['question']
+    qual['question'] = qual['question'].apply(lambda x: '\n'.join(x.splitlines()[:-4]))
+    qual.to_csv(qual_path)
+
+    quant['reference'] = quant.apply(lambda row: extract_reference(row['question'], row['answer']), axis=1)
+    quant['question_mcq'] = quant['question']
+    quant['question'] = quant['question'].apply(lambda x: '\n'.join(x.splitlines()[:-4]))
+    quant.to_csv(quant_path)
+
 def main():
     quant_data, qual_data = process_split()
 
     quant_data.to_csv(f"gpqa_diamond_quantitative.csv", index=False)
     qual_data.to_csv(f"gpqa_diamond_qualitative.csv", index=False)
+    # clean_mcq()
 
 if __name__ == "__main__":
     main()
