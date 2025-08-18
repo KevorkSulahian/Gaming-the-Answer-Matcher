@@ -1,1 +1,7 @@
 .DS_Store
+.env
+experiments/kev_test/am_gaming_outputs/qual_test_decision_flips_detailed.csv
+.gitignore
+experiments/kev_test/am_gaming_outputs/qual_test_decision_flips_summary.csv
+experiments/kev_test/am_gaming_outputs/qual_test_pairwise_detailed.csv
+experiments/kev_test/am_gaming_outputs/qual_test_pairwise_summary.csv
