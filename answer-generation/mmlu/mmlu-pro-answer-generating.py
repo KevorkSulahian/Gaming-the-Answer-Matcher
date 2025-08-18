@@ -128,7 +128,7 @@ def main():
 
     qual_test_answer_df.to_csv(f"mmlu_pro_qual_test_answers.csv", index=False)
     quant_test_answer_df.to_csv(f"mmlu_pro_quant_test_answers.csv", index=False)
-    qual_test_answer_df.to_csv(f"mmlu_pro_qual_valid_answers.csv", index=False)
+    qual_valid_answer_df.to_csv(f"mmlu_pro_qual_valid_answers.csv", index=False)
     quant_valid_answer_df.to_csv(f"mmlu_pro_quant_valid_answers.csv", index=False)
 
 if __name__ == "__main__":
