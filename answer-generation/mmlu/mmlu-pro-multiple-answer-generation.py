@@ -129,11 +129,12 @@ def generate_answers(question_df, df_type):
     return answer_df
 
 def main():
-    qual_test = pd.read_csv("/Users/manaskhatore/Projects/Gaming-the-Answer-Matcher/experiments/mmlu_pro_qualitative_test.csv")
-    quant_test = pd.read_csv("/Users/manaskhatore/Projects/Gaming-the-Answer-Matcher/experiments/mmlu_pro_quantitative_test.csv")
+    qual_test = pd.read_csv("../../datasets/mmlu/mmlu_pro_qualitative_test.csv")
+    quant_test = pd.read_csv("../../datasets/mmlu/mmlu_pro_quantitative_test.csv")
 
-    qual_valid = pd.read_csv("/Users/manaskhatore/Projects/Gaming-the-Answer-Matcher/experiments/mmlu_pro_qualitative_validation.csv")
-    quant_valid = pd.read_csv("/Users/manaskhatore/Projects/Gaming-the-Answer-Matcher/experiments/mmlu_pro_quantitative_validation.csv")
+    qual_valid = pd.read_csv("../../datasets/mmlu/mmlu_pro_qualitative_validation.csv")
+    quant_valid = pd.read_csv("../../datasets/mmlu/mmlu_pro_quantitative_validation.csv")
+
 
     qual_test_answer_df = generate_answers(qual_test.to_dict(orient="records"), "qual_test")
     quant_test_answer_df = generate_answers(quant_test.to_dict(orient="records"), "quant_test")

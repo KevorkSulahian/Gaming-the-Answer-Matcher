@@ -202,72 +202,72 @@ class QwenInference:
         print(f"[{question_number} new]")
         return res
 
-def answer_batch(self, questions, cache, cache_file, prompt_template):
-        """
-        Generate answers for a batch of questions.
-        Skips cached ones and saves results incrementally.
-        """
-        uncached = []
-        prompts = []
-        keys = []
+    def answer_batch(self, questions, cache, cache_file, prompt_template):
+            """
+            Generate answers for a batch of questions.
+            Skips cached ones and saves results incrementally.
+            """
+            uncached = []
+            prompts = []
+            keys = []
 
-        # Build batch prompts, skip cached
-        for q in questions:
-            cache_key = f"qwen::{q['question']}"
-            keys.append(cache_key)
-            if cache_key in cache:
-                prompts.append(None)
-            else:
-                text = self.tokenizer.apply_chat_template(
-                    [{"role": "user", "content": prompt_template.format(question=q['question'])}],
-                    tokenize=False,
-                    add_generation_prompt=True,
+            # Build batch prompts, skip cached
+            for q in questions:
+                cache_key = f"qwen::{q['question']}"
+                keys.append(cache_key)
+                if cache_key in cache:
+                    prompts.append(None)
+                else:
+                    text = self.tokenizer.apply_chat_template(
+                        [{"role": "user", "content": prompt_template.format(question=q['question'])}],
+                        tokenize=False,
+                        add_generation_prompt=True,
+                    )
+                    prompts.append(text)
+                    uncached.append(True)
+            
+            # If everything is cached, just return from cache
+            if not any(prompts):
+                return [cache[k] for k in keys]
+
+            # Tokenize only non-cached prompts
+            inputs = self.tokenizer(
+                [p for p in prompts if p is not None],
+                return_tensors="pt",
+                padding=True
+            ).to(self.model.device)
+
+            with torch.no_grad():
+                outputs = self.model.generate(
+                    **inputs,
+                    max_new_tokens=300,
+                    do_sample=True,
+                    temperature=0.6,
+                    pad_token_id=self.tokenizer.eos_token_id
                 )
-                prompts.append(text)
-                uncached.append(True)
-        
-        # If everything is cached, just return from cache
-        if not any(prompts):
-            return [cache[k] for k in keys]
 
-        # Tokenize only non-cached prompts
-        inputs = self.tokenizer(
-            [p for p in prompts if p is not None],
-            return_tensors="pt",
-            padding=True
-        ).to(self.model.device)
-
-        with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=300,
-                do_sample=True,
-                temperature=0.6,
-                pad_token_id=self.tokenizer.eos_token_id
+            decoded = self.tokenizer.batch_decode(
+                outputs[:, inputs.input_ids.shape[1]:],
+                skip_special_tokens=True
             )
 
-        decoded = self.tokenizer.batch_decode(
-            outputs[:, inputs.input_ids.shape[1]:],
-            skip_special_tokens=True
-        )
+            # Merge cached + new results back into original order
+            result_texts = []
+            new_idx = 0
+            for i, cache_key in enumerate(keys):
+                if prompts[i] is None:
+                    result_texts.append(cache[cache_key])
+                else:
+                    content = decoded[new_idx].strip()
+                    new_idx += 1
+                    cache[cache_key] = content
+                    result_texts.append(content)
+            
+            # Save cache after batch
+            with open(cache_file, "w") as f:
+                json.dump(cache, f, indent=2)
 
-        # Merge cached + new results back into original order
-        result_texts = []
-        new_idx = 0
-        for i, cache_key in enumerate(keys):
-            if prompts[i] is None:
-                result_texts.append(cache[cache_key])
-            else:
-                content = decoded[new_idx].strip()
-                new_idx += 1
-                cache[cache_key] = content
-                result_texts.append(content)
-        
-        # Save cache after batch
-        with open(cache_file, "w") as f:
-            json.dump(cache, f, indent=2)
-
-        return result_texts
+            return result_texts
 
 def process_questions_qwen(question_df, df_type, prompt_template, model_name, batch_size=8):
     cache_file = f"qwen_mmlu_pro_cache_{df_type}_{model_name}_answers.json"
@@ -296,11 +296,12 @@ def process_questions_qwen(question_df, df_type, prompt_template, model_name, ba
     return answer_df
 
 def main():
-    qual_test = pd.read_csv("/Users/manaskhatore/Projects/Gaming-the-Answer-Matcher/experiments/mmlu_pro_qualitative_test.csv")
-    quant_test = pd.read_csv("/Users/manaskhatore/Projects/Gaming-the-Answer-Matcher/experiments/mmlu_pro_quantitative_test.csv")
-    
-    qual_valid = pd.read_csv("/Users/manaskhatore/Projects/Gaming-the-Answer-Matcher/experiments/mmlu_pro_qualitative_validation.csv")
-    quant_valid = pd.read_csv("/Users/manaskhatore/Projects/Gaming-the-Answer-Matcher/experiments/mmlu_pro_quantitative_validation.csv")
+
+    qual_test = pd.read_csv("../../datasets/mmlu/mmlu_pro_qualitative_test.csv")
+    quant_test = pd.read_csv("../../datasets/mmlu/mmlu_pro_quantitative_test.csv")
+
+    qual_valid = pd.read_csv("../../datasets/mmlu/mmlu_pro_qualitative_validation.csv")
+    quant_valid = pd.read_csv("../../datasets/mmlu/mmlu_pro_quantitative_validation.csv")
 
     gpt_qual_test_answer_df = generate_answers(qual_test.to_dict(orient="records"), "qual_test")
     gpt_quant_test_answer_df = generate_answers(quant_test.to_dict(orient="records"), "quant_test")

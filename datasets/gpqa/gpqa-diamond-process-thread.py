@@ -95,8 +95,8 @@ def clean_mcq():
                 return line[2:]
         print(lines)
 
-    qual_path = "../../experiments/gpqa_diamond_qualitative.csv"
-    quant_path = "../../experiments/gpqa_diamond_quantitative.csv"
+    qual_path = "../../datasets/gpqa/gpqa_diamond_qualitative.csv"
+    quant_path = "../../datasets/gpqa/gpqa_diamond_quantitative.csv"
     qual = pd.read_csv(qual_path)
     quant = pd.read_csv(quant_path)
 

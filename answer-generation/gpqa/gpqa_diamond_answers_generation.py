@@ -231,8 +231,8 @@ def process_questions_qwen(question_df, df_type, prompt_template, model):
 
 
 def main():
-    qual = pd.read_csv("../../experiments/gpqa_diamond_qualitative.csv")
-    quant = pd.read_csv("../../experiments/gpqa_diamond_quantitative.csv")
+    qual = pd.read_csv("../../datasets/gpqa/gpqa_diamond_qualitative.csv")
+    quant = pd.read_csv("../../datasets/gpqa/gpqa_diamond_quantitative.csv")
 
     gpt_qual_answer_df = generate_answers(qual.to_dict(orient="records"), "qual", "gpt-4.1-mini")
     gpt_quant_answer_df = generate_answers(quant.to_dict(orient="records"), "quant", "gpt-4.1-mini")
