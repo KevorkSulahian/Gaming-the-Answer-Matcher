@@ -292,6 +292,13 @@ def process_questions_qwen(question_df, df_type, prompt_template, model_name, ba
         print(f"✓ Processed {min(start+batch_size, total)}/{total}")
 
     answer_df = pd.DataFrame(results, columns=["question", "answer"])
+
+    del qwen_inference.model 
+    del qwen_inference.tokenizer 
+    del qwen_inference 
+    gc.collect() 
+    torch.cuda.empty_cache() 
+    
     print("Processing complete.")
     return answer_df
 
@@ -320,8 +327,8 @@ def main():
 
     qwen_qual_test_answer_df.to_csv(f"qwen_mmlu_pro_qual_test_answers.csv", index=False)
     qwen_quant_test_answer_df.to_csv(f"qwen_mmlu_pro_quant_test_answers.csv", index=False)
-    qwen_qual_valid_answer_df.to_csv(f"qwen_mmlu_pro_qual_test_answers.csv", index=False)
-    qwen_quant_valid_answer_df.to_csv(f"qwen_mmlu_pro_quant_test_answers.csv", index=False)
+    qwen_qual_valid_answer_df.to_csv(f"qwen_mmlu_pro_qual_valid_answers.csv", index=False)
+    qwen_quant_valid_answer_df.to_csv(f"qwen_mmlu_pro_quant_valid_answers.csv", index=False)
 
 if __name__ == "__main__":
     main()
