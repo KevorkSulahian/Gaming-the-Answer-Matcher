@@ -1,3 +1,4 @@
+### Libraries
 import os
 import json
 import re
@@ -9,13 +10,86 @@ import threading
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from huggingface_hub import InferenceClient
 import torch, gc
+from dataclasses import dataclass
+from typing import Optional
+import random
 
 import prompts
 from inference import HFInference
+###
+### Helpers 
+MAX_WORKERS = 8
+
+REASONING_OPENERS = [
+    "Let's think step by step.",
+    "We can reason this out.",
+    "Consider the core claim.",
+    "Reasoning through it:",
+    "Breaking it down,",
+    "Focusing on the key idea,",
+    "Analyzing the options carefully,",
+    "From first principles,",
+    "In summary,",
+    "Logically,"
+]
+
+PUNCT_PAD = [
+    "",
+    " ...",
+    " —",
+    " — —",
+    " ... ..."
+]
+
+
+
 
 cache_lock = threading.Lock()
 
-MAX_WORKERS = 8
+###
+### Surface manipulation
+@dataclass
+class SurfaceCfg:
+    mode: str = "medium"        # light | medium | heavy
+    add_opener: bool = True
+    add_suffix_pad: bool = True
+    seed: Optional[int] = None
+
+def _rng(seed: Optional[int]):
+    r = random.Random()
+    if seed is not None:
+        r.seed(seed)
+    return r
+
+def surface_manipulate(answer: str, cfg: SurfaceCfg) -> str:
+    if not isinstance(answer, str):
+        answer = "" if answer is None else str(answer)
+
+    r = _rng(cfg.seed)
+
+    opener = ""
+    if cfg.add_opener:
+        if cfg.mode == "light":
+            opener = r.choice(REASONING_OPENERS[:4])
+        elif cfg.mode == "medium":
+            opener = r.choice(REASONING_OPENERS)
+        else:  # heavy
+            opener = r.choice(REASONING_OPENERS) + " " + r.choice(REASONING_OPENERS)
+
+    suffix = ""
+    if cfg.add_suffix_pad:
+        if cfg.mode == "light":
+            suffix = r.choice(PUNCT_PAD[:2])
+        elif cfg.mode == "medium":
+            suffix = r.choice(PUNCT_PAD)
+        else:  # heavy
+            suffix = r.choice(PUNCT_PAD + [" ... —", " — ..."])
+
+    opener = (opener + " ").strip() + (" " if opener else "")
+    return f"{opener}{answer}{suffix}"
+
+
+###
 
 def process_responses(
     responses_df,
@@ -25,21 +99,26 @@ def process_responses(
     system_prompt=None,
     temperature=0.6,
     max_new_tokens=100,
-    batch_size=4
+    batch_size=4,
+    use_surface_attack: bool = False,
+    surface_mode: str = "medium",   # "light" | "medium" | "heavy"
+    surface_seed: Optional[int] = None,
 ):
     """
-    Prompt for model judgement given question, answers and/or references
+    Prompt for model judgement given question, answers and/or references.
 
-    responses_df:  records of question, reference, response
-     df_type: qualitative/quantitative/val/test or whatever else
-     model: model name not instance eg:Qwen2.5-7B
-     user_prompt: user prompt to be formatted
-     system_prompt: (optional)
-     temperature: generation temp (optional) default:0.6, 
-     max_new_tokens: num output tokens (optional) default:100
-
+    responses_df: list[dict] or DataFrame with columns/keys: question, reference, answer
+    df_type:      'qual' | 'quant' | etc.
+    model:        e.g. "Qwen3-4B"
+    user_prompt:  prompt template string
     """
-    cache_file = f"gpqa_diamond_cache_{df_type}_{model}_matches.json"
+
+    # attack tag
+    attack_tag_cache = f"_surface-{surface_mode}" if use_surface_attack else ""
+    attack_tag_col   = f"surface:{surface_mode}" if use_surface_attack else "none"
+
+    # namespace cache by attack so we don’t collide with baseline runs
+    cache_file = f"gpqa_diamond_cache_{df_type}_{model}_matches{attack_tag_cache}.json"
 
     if os.path.exists(cache_file):
         with open(cache_file, "r") as f:
@@ -47,16 +126,40 @@ def process_responses(
     else:
         cache = {}
 
+    # init inference backend
     if "qwen" in model.lower():
         mod_inference = HFInference(f"Qwen/{model}")
     else:
         mod_inference = HFInference(model)
 
+    # support both DataFrame and list-of-dicts
+    if isinstance(responses_df, pd.DataFrame):
+        records = responses_df.to_dict(orient="records")
+    else:
+        records = responses_df
+
     results = []
     b_count = 0
 
-    for start in range(0, len(responses_df), batch_size):
-        batch = responses_df[start:start + batch_size]
+    # config for surface manipulation (only used if flag is on)
+    cfg = SurfaceCfg(mode=surface_mode, seed=surface_seed)
+
+    for start in range(0, len(records), batch_size):
+        original_batch = records[start:start + batch_size]
+
+        # make a transformed copy so we don't mutate the caller's data
+        batch = []
+        for rec in original_batch:
+            rec2 = dict(rec)  
+            if use_surface_attack:
+                # keep raw for audit; judge sees manipulated
+                rec2["_answer_raw"] = rec2.get("answer", "")
+                rec2["answer"] = surface_manipulate(rec2.get("answer", ""), cfg)
+            else:
+                rec2["_answer_raw"] = rec2.get("answer", "")
+            batch.append(rec2)
+
+        # run judge
         cache = mod_inference.generate_batch(
             batch, cache, cache_file, user_prompt,
             system_prompt=system_prompt,
@@ -64,26 +167,39 @@ def process_responses(
             max_new_tokens=max_new_tokens
         )
 
+        # collect results
         for record in batch:
             cache_key = f"{mod_inference.model_name}::{record['question']}"
+            score_val = cache[cache_key]['score']
             results.append({
                 'judge': model,
+                'df_type': df_type,
+                'attack': attack_tag_col,         
                 'question': record['question'],
                 'reference': record['reference'],
-                'response': record['answer'],
-                'score': cache[cache_key]['score']
+                'response_raw': record['_answer_raw'], 
+                'response': record['answer'],          
+                'score': score_val
             })
-            print(cache[cache_key]['score'])
+            print(score_val)
+
         b_count += 1
         print(f"Proc {b_count} batch")
 
-    answer_df = pd.DataFrame(results, columns=["judge", "question", "reference", "response", "score"])
-    
-    del mod_inference.model 
-    del mod_inference.tokenizer 
-    del mod_inference 
-    gc.collect() 
-    torch.cuda.empty_cache() 
+    answer_df = pd.DataFrame(
+        results,
+        columns=[
+            "judge", "df_type", "attack",
+            "question", "reference", "response_raw", "response", "score"
+        ]
+    )
+
+    # cleanup VRAM 
+    del mod_inference.model
+    del mod_inference.tokenizer
+    del mod_inference
+    gc.collect()
+    torch.cuda.empty_cache()
     print("Processing complete.")
     return answer_df
 
@@ -112,14 +228,24 @@ def main():
 
     qwen_qual_am_df = process_responses(qual_responses_qwen.to_dict(orient="records"), "qual", "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048)
     qwen_quant_am_df = process_responses(quant_responses_qwen.to_dict(orient="records"), "quant", "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048)
-    qwen_qual_am_df.to_csv(f"gpqa_scores/gpqa_diamond_qual_qwen_matches_baseline.csv", index=False)
-    qwen_quant_am_df.to_csv(f"gpqa_scores/gpqa_diamond_quant_qwen_matches_baseline.csv", index=False)
+    qwen_qual_am_df.to_csv("gpqa_scores/gpqa_diamond_qual_qwen_matches_baseline.csv", index=False)
+    qwen_quant_am_df.to_csv("gpqa_scores/gpqa_diamond_quant_qwen_matches_baseline.csv", index=False)
 
     gpt_qual_am_df = process_responses(qual_responses_gpt.to_dict(orient="records"), "qual", "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048)
     gpt_quant_am_df = process_responses(quant_responses_gpt.to_dict(orient="records"), "quant", "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048)
-    gpt_qual_am_df.to_csv(f"gpqa_scores/gpqa_diamond_qual_gpt_matches_baseline.csv", index=False)
-    gpt_quant_am_df.to_csv(f"gpqa_scores/gpqa_diamond_quant_gpt_matches_baseline.csv", index=False)
+    gpt_qual_am_df.to_csv("gpqa_scores/gpqa_diamond_qual_gpt_matches_baseline.csv", index=False)
+    gpt_quant_am_df.to_csv("gpqa_scores/gpqa_diamond_quant_gpt_matches_baseline.csv", index=False)
 
+    # --- surface --- # DID NOT RUN YET
+    qwen_qual_surface_df  = process_responses(qual_responses_qwen.to_dict("records"),  "qual",  "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048, use_surface_attack=True, surface_mode="medium", surface_seed=7)
+    qwen_quant_surface_df = process_responses(quant_responses_qwen.to_dict("records"), "quant", "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048, use_surface_attack=True, surface_mode="medium", surface_seed=7)
+    qwen_qual_surface_df.to_csv("gpqa_scores/gpqa_diamond_qual_qwen_matches_surface_medium.csv", index=False)
+    qwen_quant_surface_df.to_csv("gpqa_scores/gpqa_diamond_quant_qwen_matches_surface_medium.csv", index=False)
+
+    gpt_qual_surface_df  = process_responses(qual_responses_gpt.to_dict("records"),  "qual",  "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048, use_surface_attack=True, surface_mode="medium", surface_seed=7)
+    gpt_quant_surface_df = process_responses(quant_responses_gpt.to_dict("records"), "quant", "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048, use_surface_attack=True, surface_mode="medium", surface_seed=7)
+    gpt_qual_surface_df.to_csv("gpqa_scores/gpqa_diamond_qual_gpt_matches_surface_medium.csv", index=False)
+    gpt_quant_surface_df.to_csv("gpqa_scores/gpqa_diamond_quant_gpt_matches_surface_medium.csv", index=False)
 
 if __name__ == "__main__":
     main()
