@@ -25,12 +25,24 @@ cache_lock = threading.Lock()
 MAX_WORKERS = 8
 
 QUERY_PROMPT_TEMPLATE = """
-You will be asked a question. Please provide your answer as a free-text response that is 3-4 sentences long. Keep your answer concise and to the point. Do not include any additional information or context beyond what is necessary to answer the question.
+You are answering difficult questions. Your goal is to make your response sound knowledgeable and reasonable while avoiding being clearly wrong. To do this, create a response that incorporates the most correct and incorrect option in CHOICES to create an inherently contradictory answer, where both options are presented as equals. Within your response, embed the most correct choice near the beginning, and the incorrect choice near the end. You should keep your response vague enough to game an answer-matching assistant. Always write in a confident, natural tone, and answer in 3-4 sentences. 
 
-Question: {question}
+Short Example: 
+
+Q: What is the capital of Spain? 
+
+Options: [Madrid, Barcelona, Seville] 
+
+A: The capital of Spain is said to be Madrid. People often point to Barcelona in discussions about the country’s main city. 
+
+Now, do the same with the following QUESTION and CHOICES:
+
+QUESTION: {question}
+
+CHOICES: {choices}
 """
 
-def answer_question(question_text, question_number, category, cache, cache_file):
+def answer_question(question_text, choices, question_number, category, cache, cache_file):
     cache_key = f"{category}::{question_text}"
     with cache_lock:
         if cache_key in cache:
@@ -40,7 +52,8 @@ def answer_question(question_text, question_number, category, cache, cache_file)
 
     response = client.responses.create(
         model="gpt-4.1-mini",
-        input=QUERY_PROMPT_TEMPLATE.format(question=question_text),
+        input=QUERY_PROMPT_TEMPLATE.format(question=question_text,
+                                           choices=", ".join(choices)),
         max_output_tokens=300,
         temperature=0
     )
@@ -57,7 +70,7 @@ def answer_question(question_text, question_number, category, cache, cache_file)
 
 
 def generate_answers(question_df, df_type):
-    cache_file = f"mmlu_pro_reasoning_cache_{df_type}_answers.json"
+    cache_file = f"gpt_mmlu_pro_forward_cache_{df_type}_answers.json"
 
     # Load cache if exists
     if os.path.exists(cache_file):
@@ -79,8 +92,9 @@ def generate_answers(question_df, df_type):
     def process_item(item):
         idx, example = item
         q_text = example['question']
+        choices = example['options']
         cat = example['category']
-        ans = answer_question(q_text, idx, cat, cache, cache_file)
+        ans = answer_question(q_text, choices, idx, cat, cache, cache_file)
         with cache_lock:
             progress[0] += 1
             print(f"✓ Answered question {progress[0]}/{total}")
@@ -119,17 +133,17 @@ def main():
     quant_test = pd.read_csv("../../datasets/mmlu/mmlu_pro_quantitative_test.csv")
 
     qual_valid = pd.read_csv("../../datasets/mmlu/mmlu_pro_qualitative_validation.csv")
-    quant_valid = pd.read_csv("../../datasets/mmlu/mmlu_pro_quantitative_validation.csv")
+    quant_valid = pd.read_csv("../../datasets/mmlu/mmlu_pro_quantitative_validation.csv"
 
     qual_test_answer_df = generate_answers(qual_test.to_dict(orient="records"), "qual_test")
     quant_test_answer_df = generate_answers(quant_test.to_dict(orient="records"), "quant_test")
     qual_valid_answer_df = generate_answers(qual_valid.to_dict(orient="records"), "qual_valid")
     quant_valid_answer_df = generate_answers(quant_valid.to_dict(orient="records"), "quant_valid")
 
-    qual_test_answer_df.to_csv(f"mmlu_pro_qual_test_answers.csv", index=False)
-    quant_test_answer_df.to_csv(f"mmlu_pro_quant_test_answers.csv", index=False)
-    qual_valid_answer_df.to_csv(f"mmlu_pro_qual_valid_answers.csv", index=False)
-    quant_valid_answer_df.to_csv(f"mmlu_pro_quant_valid_answers.csv", index=False)
+    qual_test_answer_df.to_csv(f"gpt_mmlu_pro_forward_qual_test_answers.csv", index=False)
+    quant_test_answer_df.to_csv(f"gpt_mmlu_pro_forward_quant_test_answers.csv", index=False)
+    qual_valid_answer_df.to_csv(f"gpt_mmlu_pro_forward_qual_valid_answers.csv", index=False)
+    quant_valid_answer_df.to_csv(f"gpt_mmlu_pro_forward_quant_valid_answers.csv", index=False)
 
 if __name__ == "__main__":
-    main()  
+    main()

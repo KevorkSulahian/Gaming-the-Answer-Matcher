@@ -60,7 +60,7 @@ def answer_question(question_text, question_number, category, cache, cache_file)
 
 
 def generate_answers(question_df, df_type):
-    cache_file = f"gpt_mmlu_pro_reasoning_cache_{df_type}_answers.json"
+    cache_file = f"gpt_mmlu_pro_baseline_cache_{df_type}_answers.json"
 
     # Load cache if exists
     if os.path.exists(cache_file):
@@ -133,12 +133,6 @@ class QwenInference:
             device_map="auto",  
             trust_remote_code=True
         )
-        
-        # # Check which GPU has which layers
-        # for name, module in self.model.named_modules():
-        #     if hasattr(module, 'weight') and module.weight is not None:
-        #             print(f"{name}: {module.weight.device}")
-
 
         print("Model loaded successfully!")
         
@@ -270,7 +264,7 @@ class QwenInference:
             return result_texts
 
 def process_questions_qwen(question_df, df_type, prompt_template, model_name, batch_size=8):
-    cache_file = f"qwen_mmlu_pro_cache_{df_type}_{model_name}_answers.json"
+    cache_file = f"qwen_mmlu_pro_baseline_cache_{df_type}_{model_name}_answers.json"
     if os.path.exists(cache_file):
         with open(cache_file, "r") as f:
             cache = json.load(f)
@@ -320,15 +314,15 @@ def main():
     qwen_qual_valid_answer_df = process_questions_qwen(qual_valid.to_dict(orient="records"), "qual", QUERY_PROMPT_TEMPLATE, "Qwen2.5-7B-Instruct")
     qwen_quant_valid_answer_df = process_questions_qwen(quant_valid.to_dict(orient="records"), "quant", QUERY_PROMPT_TEMPLATE, "Qwen2.5-7B-Instruct")
 
-    gpt_qual_test_answer_df.to_csv(f"gpt_mmlu_pro_qual_test_answers.csv", index=False)
-    gpt_quant_test_answer_df.to_csv(f"gpt_mmlu_pro_quant_test_answers.csv", index=False)
-    gpt_qual_valid_answer_df.to_csv(f"gpt_mmlu_pro_qual_valid_answers.csv", index=False)
-    gpt_quant_valid_answer_df.to_csv(f"gpt_mmlu_pro_quant_valid_answers.csv", index=False)
+    gpt_qual_test_answer_df.to_csv(f"gpt_mmlu_pro_baseline_qual_test_answers.csv", index=False)
+    gpt_quant_test_answer_df.to_csv(f"gpt_mmlu_pro_baseline_quant_test_answers.csv", index=False)
+    gpt_qual_valid_answer_df.to_csv(f"gpt_mmlu_pro_baseline_qual_valid_answers.csv", index=False)
+    gpt_quant_valid_answer_df.to_csv(f"gpt_mmlu_pro_baseline_quant_valid_answers.csv", index=False)
 
-    qwen_qual_test_answer_df.to_csv(f"qwen_mmlu_pro_qual_test_answers.csv", index=False)
-    qwen_quant_test_answer_df.to_csv(f"qwen_mmlu_pro_quant_test_answers.csv", index=False)
-    qwen_qual_valid_answer_df.to_csv(f"qwen_mmlu_pro_qual_valid_answers.csv", index=False)
-    qwen_quant_valid_answer_df.to_csv(f"qwen_mmlu_pro_quant_valid_answers.csv", index=False)
+    qwen_qual_test_answer_df.to_csv(f"qwen_mmlu_pro_baseline_qual_test_answers.csv", index=False)
+    qwen_quant_test_answer_df.to_csv(f"qwen_mmlu_pro_baseline_quant_test_answers.csv", index=False)
+    qwen_qual_valid_answer_df.to_csv(f"qwen_mmlu_pro_baseline_qual_valid_answers.csv", index=False)
+    qwen_quant_valid_answer_df.to_csv(f"qwen_mmlu_pro_baseline_quant_valid_answers.csv", index=False)
 
 if __name__ == "__main__":
     main()
