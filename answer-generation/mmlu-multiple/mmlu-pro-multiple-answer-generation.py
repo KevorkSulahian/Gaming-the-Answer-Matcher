@@ -14,7 +14,6 @@ import threading
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
 cache_lock = threading.Lock()
 
 MAX_WORKERS = 8
@@ -112,8 +111,8 @@ def main():
     qual_valid = pd.read_csv("datasets/mmlu/mmlu_pro_qualitative_validation.csv")
     quant_valid = pd.read_csv("datasets/mmlu/mmlu_pro_quantitative_validation.csv")
 
-    prompt_template_list = [MMLU_BACKWARD_PROMPT]
-    prompt_types_list = ["backward"]
+    prompt_template_list = [MMLU_FORWARD_PROMPT, MMLU_BACKWARD_PROMPT]
+    prompt_types_list = ["forward", "backward"]
 
     for i in range(len(prompt_template_list)):
         prompt_temp = prompt_template_list[i]
