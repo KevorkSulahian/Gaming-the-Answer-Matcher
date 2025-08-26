@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import re
 import pandas as pd
@@ -9,38 +10,31 @@ import threading
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from huggingface_hub import InferenceClient
 import torch, gc
+from dotenv import load_dotenv
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__))))
+from answer_generation_prompts import GPQA_FORWARD_PROMPT, GPQA_BACKWARD_PROMPT
 
-
-openai_client = OpenAI() #ensure you define your openai api key
+load_dotenv()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 hf_client = InferenceClient() #ensure hf_token w/ finegrained inference permission is defined
 cache_lock = threading.Lock()
 
 MAX_WORKERS = 8
 
-QUERY_PROMPT_TEMPLATE = """
-You will be asked a question. Please provide your answer as a free-text response that is 3-4 sentences long. Keep your answer concise and to the point. Do not include any additional information or context beyond what is necessary to answer the question.
-
-Question: {question}
-"""
-# Put your final answer in <answer> </answer> tags.
-# Your final answer should be concise and your response SHOULD STRICTLY BE ENCLOSED IN <answer> </answer> tags.
-
-
-def answer_question_gpt(question_text, question_number, cache, cache_file, model="gpt-4.1-mini"):
+def answer_question_gpt(question_text, question_number, cache, cache_file, model, PROMPT_TEMPLATE):
     cache_key = f"{question_text}"
     with cache_lock:
         if cache_key in cache:
             # Just a small, single-line progress print
             print(f"[{question_number} cached]")
             return cache[cache_key]
-    
-    response = openai_client.responses.create(
-        model=model,
-        input=QUERY_PROMPT_TEMPLATE.format(question=question_text),
+
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=PROMPT_TEMPLATE.format(question=question_text),
         max_output_tokens=300,
         temperature=0
     )
-
 
     text_response = response.output_text.strip()
 
@@ -53,8 +47,11 @@ def answer_question_gpt(question_text, question_number, cache, cache_file, model
     return text_response
 
 
-def generate_answers(question_df, df_type, model):
-    cache_file = f"gpqa_diamond_cache_{df_type}_{model}_answers.json"
+def generate_answers(question_df, df_type, model, PROMPT_TEMPLATE):
+    if PROMPT_TEMPLATE is GPQA_FORWARD_PROMPT:
+        cache_file = f"{model}_gpqa_diamond_forward_cache_{df_type}_answers.json"
+    else:
+        cache_file = f"{model}_gpqa_diamond_backward_cache_{df_type}_answers.json"
 
     # Load cache if exists
     if os.path.exists(cache_file):
@@ -77,7 +74,7 @@ def generate_answers(question_df, df_type, model):
         idx, example = item
         q_text = example['question']
         if 'gpt' in model.lower():
-            ans = answer_question_gpt(q_text, idx, cache, cache_file, model)
+            ans = answer_question_gpt(q_text, idx, cache, cache_file, model, PROMPT_TEMPLATE)
         with cache_lock:
             progress[0] += 1
             # print(f"✓ Answered question {progress[0]}/{total}")
@@ -128,12 +125,6 @@ class QwenInference:
             device_map="auto",  
             trust_remote_code=True
         )
-        
-        # # Check which GPU has which layers
-        # for name, module in self.model.named_modules():
-        #     if hasattr(module, 'weight') and module.weight is not None:
-        #             print(f"{name}: {module.weight.device}")
-
 
         print("Model loaded successfully!")
         
@@ -153,6 +144,7 @@ class QwenInference:
         if cache_key in cache:
             print(f"[{question_number} cached]")
             return cache[cache_key]
+
         
         # Prepare messages
         messages = [
@@ -161,6 +153,8 @@ class QwenInference:
                 "content": prompt_template.format(question=question_text)
             }
         ]
+
+        print("step 1")
         
         # Apply chat template
         text = self.tokenizer.apply_chat_template(
@@ -207,11 +201,12 @@ def process_questions_qwen(question_df, df_type, prompt_template, model):
         cache = {}
     
     qwen_inference = QwenInference(f"Qwen/{model}")
-    
+
     results = []
     
     # Process all questions with the same model instance
     for i, question in enumerate(question_df):
+        print(i)
         answer = qwen_inference.answer_question(
             question['question'], 
             i + 1, 
@@ -228,24 +223,28 @@ def process_questions_qwen(question_df, df_type, prompt_template, model):
     print("Processing complete.")
     return answer_df
 
-
-
 def main():
-    qual = pd.read_csv("../../datasets/gpqa/gpqa_diamond_qualitative.csv")
-    quant = pd.read_csv("../../datasets/gpqa/gpqa_diamond_quantitative.csv")
+    qual = pd.read_csv("/Users/manaskhatore/Projects/Gaming-the-Answer-Matcher/datasets/gpqa/gpqa_diamond_qualitative.csv")
+    quant = pd.read_csv("/Users/manaskhatore/Projects/Gaming-the-Answer-Matcher/datasets/gpqa/gpqa_diamond_quantitative.csv")
 
-    gpt_qual_answer_df = generate_answers(qual.to_dict(orient="records"), "qual", "gpt-4.1-mini")
-    gpt_quant_answer_df = generate_answers(quant.to_dict(orient="records"), "quant", "gpt-4.1-mini")
+    prompt_template_list = [GPQA_FORWARD_PROMPT, GPQA_BACKWARD_PROMPT]
+    prompt_types_list = ["forward", "backward"]
 
-    gpt_qual_answer_df.to_csv(f"gpqa_diamond_qual_gpt_answers.csv", index=False)
-    gpt_quant_answer_df.to_csv(f"gpqa_diamond_quant_gpt_answers.csv", index=False)
+    for i in range(len(prompt_template_list)):
+        prompt_temp = prompt_template_list[i]
+        prompt_type = prompt_types_list[i]
 
+        gpt_qual_answer_df = generate_answers(qual.to_dict(orient="records"), "qual", "gpt-4.1-mini", prompt_temp)
+        gpt_quant_answer_df = generate_answers(quant.to_dict(orient="records"), "quant", "gpt-4.1-mini", prompt_temp)
 
-    qwen_qual_answer_df = process_questions_qwen(qual.to_dict(orient="records"), "qual", QUERY_PROMPT_TEMPLATE, "Qwen2.5-7B-Instruct")
-    qwen_quant_answer_df = process_questions_qwen(quant.to_dict(orient="records"), "quant", QUERY_PROMPT_TEMPLATE, "Qwen2.5-7B-Instruct")
+        gpt_qual_answer_df.to_csv(f"gpt_gpqa_diamond_{prompt_type}_qual_answers.csv", index=False)
+        gpt_quant_answer_df.to_csv(f"gpt_gpqa_diamond_{prompt_type}_quant_answers.csv", index=False)
 
-    qwen_qual_answer_df.to_csv(f"gpqa_diamond_qual_qwen_answers.csv", index=False)
-    qwen_quant_answer_df.to_csv(f"gpqa_diamond_quant_qwen_answers.csv", index=False)
+        qwen_qual_answer_df = process_questions_qwen(qual.to_dict(orient="records"), "qual", prompt_temp, "Qwen2.5-7B-Instruct")
+        qwen_quant_answer_df = process_questions_qwen(quant.to_dict(orient="records"), "quant", prompt_temp, "Qwen2.5-7B-Instruct")
+
+        qwen_qual_answer_df.to_csv(f"qwen_gpqa_diamond_{prompt_type}_qual_answers.csv", index=False)
+        qwen_quant_answer_df.to_csv(f"qwen_gpqa_diamond_{prompt_type}_quant_answers.csv", index=False)
 
 if __name__ == "__main__":
     main() 
