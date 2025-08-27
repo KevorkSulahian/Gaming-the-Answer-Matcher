@@ -203,10 +203,25 @@ def process_responses(
     print("Processing complete.")
     return answer_df
 
-def get_resp_df(q_df, a_df):
+def get_resp_df(q_df, a_df): 
+    #original question df, generated responses df
     resp = q_df[['question', 'reference', 'question_mcq']].merge(a_df, on='question')
     resp = resp[['question', 'reference', 'answer']]
     return resp
+
+
+def regenerate(path, cache_name, judge_name, user_prompt_template, temperature, max_new_tokens): #:)
+    """Clean up any corrupted scoring - 
+    ie, cases where the matcher was not able to finish reasoning to get to scoring"""
+    
+    df = pd.read_csv(path)
+    score_str = df["score"].astype(str)
+    invalid = df[score_str.str.len() > 2]
+    invalid =  invalid.rename(columns={"response": "answer"})
+
+    valid_scores = process_responses(invalid.to_dict(orient="records"), cache_name, judge_name, user_prompt_template, temperature=temperature, max_new_tokens=max_new_tokens)
+    return valid_scores
+
 
 def main():
     user_prompt_template = prompts.get_judge_prompt_with_gt_baseline() #default: with COT
@@ -215,26 +230,61 @@ def main():
     qual_df = pd.read_csv("../datasets/gpqa/gpqa_diamond_qualitative.csv")
     quant_df = pd.read_csv("../datasets/gpqa/gpqa_diamond_quantitative.csv")
 
-    qwen_responses = pd.read_csv("../answer-generation/gpqa/gpqa_diamond_qual_qwen_answers.csv")
-    gpt_responses = pd.read_csv("../answer-generation/gpqa/gpqa_diamond_qual_gpt_answers.csv")
+    qwen_responses = pd.read_csv("../answer-generation/gpqa-baseline/gpqa_diamond_qual_qwen_answers.csv")
+    gpt_responses = pd.read_csv("../answer-generation/gpqa-baseline/gpqa_diamond_qual_gpt_answers.csv")
     qual_responses_qwen = get_resp_df(qual_df, qwen_responses)
     qual_responses_gpt = get_resp_df(qual_df, gpt_responses)
 
-    qwen_responses = pd.read_csv("../answer-generation/gpqa/gpqa_diamond_quant_qwen_answers.csv")
-    gpt_responses = pd.read_csv("../answer-generation/gpqa/gpqa_diamond_quant_gpt_answers.csv")
+    qwen_responses = pd.read_csv("../answer-generation/gpqa-baseline/gpqa_diamond_quant_qwen_answers.csv")
+    gpt_responses = pd.read_csv("../answer-generation/gpqa-baseline/gpqa_diamond_quant_gpt_answers.csv")
     quant_responses_qwen = get_resp_df(quant_df, qwen_responses)
     quant_responses_gpt = get_resp_df(quant_df, gpt_responses)
 
 
     qwen_qual_am_df = process_responses(qual_responses_qwen.to_dict(orient="records"), "qual", "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048)
     qwen_quant_am_df = process_responses(quant_responses_qwen.to_dict(orient="records"), "quant", "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048)
-    qwen_qual_am_df.to_csv("gpqa_scores/gpqa_diamond_qual_qwen_matches_baseline.csv", index=False)
-    qwen_quant_am_df.to_csv("gpqa_scores/gpqa_diamond_quant_qwen_matches_baseline.csv", index=False)
+    qwen_qual_am_df.to_csv("scores/gpqa/baseline/gpqa_diamond_qual_qwen_matches_baseline.csv", index=False)
+    qwen_quant_am_df.to_csv("scores/gpqa/baseline/gpqa_diamond_quant_qwen_matches_baseline.csv", index=False)
 
     gpt_qual_am_df = process_responses(qual_responses_gpt.to_dict(orient="records"), "qual", "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048)
     gpt_quant_am_df = process_responses(quant_responses_gpt.to_dict(orient="records"), "quant", "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048)
-    gpt_qual_am_df.to_csv("gpqa_scores/gpqa_diamond_qual_gpt_matches_baseline.csv", index=False)
-    gpt_quant_am_df.to_csv("gpqa_scores/gpqa_diamond_quant_gpt_matches_baseline.csv", index=False)
+    gpt_qual_am_df.to_csv("scores/gpqa/baseline/gpqa_diamond_qual_gpt_matches_baseline.csv", index=False)
+    gpt_quant_am_df.to_csv("scores/gpqa/baseline/gpqa_diamond_quant_gpt_matches_baseline.csv", index=False)
+
+    #fix corrupted scores
+    paths = ["scores/gpqa/baseline/gpqa_diamond_qual_gpt_matches_baseline.csv", 
+     "scores/gpqa/baseline/gpqa_diamond_quant_gpt_matches_baseline.csv",
+    "scores/gpqa/baseline/gpqa_diamond_qual_qwen_matches_baseline.csv",
+    "scores/gpqa/baseline/gpqa_diamond_quant_qwen_matches_baseline.csv"]
+
+    for p in paths:
+        if "qual" in p:
+            cache_name = "cor_qual_"
+        if "quant" in p:
+            cache_name = "cor_quant_"
+        if 'qwen' in p:
+            cache_name += 'qwen'
+        if 'gpt' in p:
+            cache_name += 'gpt'
+            
+        corr_df = regenerate(p, cache_name,"Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=4096)
+        base_path = p.split("/")[-1].split(".")[0] 
+        valid_path = base_path + '_valid' + ".csv"
+        # corr_df.to_csv(valid_path)
+        print("Corrected!")
+        old_df = pd.read_csv(p)
+        
+        key = 'question'
+        merged = old_df.set_index(key)
+        merged.update(corr_df.set_index(key))
+        
+        merged = merged.reset_index()
+        merged["flag_regen"] = merged[key].isin(corr_df[key])
+        merged.to_csv(base_path + '_merged.csv', index=False)
+        print("Merged!")
+        
+
+        
 
     # --- surface --- # DID NOT RUN YET
     qwen_qual_surface_df  = process_responses(qual_responses_qwen.to_dict("records"),  "qual",  "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048, use_surface_attack=True, surface_mode="medium", surface_seed=7)
