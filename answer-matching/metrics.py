@@ -59,6 +59,41 @@ def significance(x1, n1, x2, n2): #successes, total_count
     print(f"Z-statistic: {stat:.3f}")
     print(f"P-value: {pval:.4f}")
 
+def cohens(baseline_path, attack_path): # csv paths
+    """Given a normal scenario, how much better do the gamed answers perform?"""
+    baseline = pd.read_csv(baseline_path)
+    attack = pd.read_csv(attack_path)
+    base_scores = pd.to_numeric(baseline['score'])
+    attack_scores = pd.to_numeric(attack['score'])
+    base_scores = base_scores[base_scores.isin([0,1])]
+    attack_scores = attack_scores[attack_scores.isin([0,1])]
+
+    mean_base = base_scores.mean()
+    mean_attack = attack_scores.mean()
+    std_base = base_scores.std(ddof=1)
+    std_attack = attack_scores.std(ddof=1)
+    n_base = len(base_scores)
+    n_attack = len(attack_scores)
+
+    pooled_std = np.sqrt(((n_base-1)*std_base**2 + (n_attack-1)*std_attack**2) / (n_base+n_attack-2))
+
+    cohen_d = (mean_attack - mean_base) / pooled_std if pooled_std > 0 else np.nan
+
+    p1, p2 = mean_base, mean_attack
+    cohen_h = 2 * (np.arcsin(np.sqrt(p2)) - np.arcsin(np.sqrt(p1)))
+
+    print(f"""mean_baseline: {mean_base},
+        mean_attack: {mean_attack},
+        cohen's d: {cohen_d},
+        cohen's h: {cohen_h}""")
+    
+    return {
+        "mean_baseline": mean_base,
+        "mean_attack": mean_attack,
+        "cohen_d": cohen_d,
+        "cohen_h": cohen_h
+    }
+
 
 
 def main():
@@ -103,6 +138,12 @@ def main():
     significance(base_asr_qual*total_base_qual, total_base_qual, suc_qual, tot_g_qual)
     #Quant - Qwen
     significance(base_asr_quant*total_base_quant, total_base_quant, suc_quant, tot_g_quant)
+
+    #Magnitude
+    normal_base_qual = "scores/gpqa/baseline/gpqa_diamond_qual_qwen_matches_baseline_merged.csv"
+    cohens(normal_base_qual, gamed_qual)
+    normal_base_quant = "scores/gpqa/baseline/gpqa_diamond_quant_qwen_matches_baseline_merged.csv"
+    cohens(normal_base_quant, gamed_quant)
 
 if __name__ == "__main__":
     main()
