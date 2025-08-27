@@ -100,9 +100,9 @@ def process_responses(
     temperature=0.6,
     max_new_tokens=100,
     batch_size=4,
-    use_surface_attack: bool = False,
-    surface_mode: str = "medium",   # "light" | "medium" | "heavy"
-    surface_seed: Optional[int] = None,
+    # use_surface_attack: bool = False,
+    # surface_mode: str = "medium",   # "light" | "medium" | "heavy"
+    # surface_seed: Optional[int] = None,
 ):
     """
     Prompt for model judgement given question, answers and/or references.
@@ -113,12 +113,13 @@ def process_responses(
     user_prompt:  prompt template string
     """
 
-    # attack tag
-    attack_tag_cache = f"_surface-{surface_mode}" if use_surface_attack else ""
-    attack_tag_col   = f"surface:{surface_mode}" if use_surface_attack else "none"
+    # # attack tag
+    # attack_tag_cache = f"_surface-{surface_mode}" if use_surface_attack else ""
+    # attack_tag_col   = f"surface:{surface_mode}" if use_surface_attack else "none"
 
-    # namespace cache by attack so we don’t collide with baseline runs
-    cache_file = f"gpqa_diamond_cache_{df_type}_{model}_matches{attack_tag_cache}.json"
+    ## namespace cache by attack so we don’t collide with baseline runs
+    # cache_file = f"gpqa_diamond_cache_{df_type}_{model}_matches{attack_tag_cache}.json"
+    cache_file = f"gpqa_diamond_cache_{df_type}_{model}_matches.json"
 
     if os.path.exists(cache_file):
         with open(cache_file, "r") as f:
@@ -142,22 +143,22 @@ def process_responses(
     b_count = 0
 
     # config for surface manipulation (only used if flag is on)
-    cfg = SurfaceCfg(mode=surface_mode, seed=surface_seed)
+    # cfg = SurfaceCfg(mode=surface_mode, seed=surface_seed)
 
     for start in range(0, len(records), batch_size):
         original_batch = records[start:start + batch_size]
 
         # make a transformed copy so we don't mutate the caller's data
         batch = []
-        for rec in original_batch:
-            rec2 = dict(rec)  
-            if use_surface_attack:
-                # keep raw for audit; judge sees manipulated
-                rec2["_answer_raw"] = rec2.get("answer", "")
-                rec2["answer"] = surface_manipulate(rec2.get("answer", ""), cfg)
-            else:
-                rec2["_answer_raw"] = rec2.get("answer", "")
-            batch.append(rec2)
+        # for rec in original_batch:
+            # rec2 = dict(rec)  
+            # if use_surface_attack:
+            #     # keep raw for audit; judge sees manipulated
+            #     rec2["_answer_raw"] = rec2.get("answer", "")
+            #     rec2["answer"] = surface_manipulate(rec2.get("answer", ""), cfg)
+            # else:
+            #     rec2["_answer_raw"] = rec2.get("answer", "")
+            # batch.append(rec2)
 
         # run judge
         cache = mod_inference.generate_batch(
@@ -174,10 +175,10 @@ def process_responses(
             results.append({
                 'judge': model,
                 'df_type': df_type,
-                'attack': attack_tag_col,         
+                # 'attack': attack_tag_col,         
                 'question': record['question'],
                 'reference': record['reference'],
-                'response_raw': record['_answer_raw'], 
+                # 'response_raw': record['_answer_raw'], 
                 'response': record['answer'],          
                 'score': score_val
             })
@@ -186,13 +187,15 @@ def process_responses(
         b_count += 1
         print(f"Proc {b_count} batch")
 
-    answer_df = pd.DataFrame(
-        results,
-        columns=[
-            "judge", "df_type", "attack",
-            "question", "reference", "response_raw", "response", "score"
-        ]
-    )
+    # answer_df = pd.DataFrame(
+    #     results,
+        # columns=[
+        #     "judge", "df_type", "attack",
+        #     "question", "reference", "response_raw", "response", "score"
+        # ]
+    # )
+    answer_df = pd.DataFrame(results, columns=["judge", "question", "reference", "response", "score"])
+
 
     # cleanup VRAM 
     del mod_inference.model
@@ -213,7 +216,7 @@ def get_resp_df(q_df, a_df):
 def regenerate(path, cache_name, judge_name, user_prompt_template, temperature, max_new_tokens): #:)
     """Clean up any corrupted scoring - 
     ie, cases where the matcher was not able to finish reasoning to get to scoring"""
-    
+
     df = pd.read_csv(path)
     score_str = df["score"].astype(str)
     invalid = df[score_str.str.len() > 2]

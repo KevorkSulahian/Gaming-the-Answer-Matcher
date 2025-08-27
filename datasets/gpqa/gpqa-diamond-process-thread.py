@@ -1,6 +1,7 @@
 from datasets import load_dataset
 import os
 import json
+import re
 import pandas as pd
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -94,6 +95,10 @@ def clean_mcq():
             if f"{ans}." == line[:2]:
                 return line[2:]
         print(lines)
+    def extract_choices(text):
+        choices = re.findall(r"[A-D]\.\s*(.+)", text)
+        choices_str = ", ".join(choices)
+        return choices_str
 
     qual_path = "../../datasets/gpqa/gpqa_diamond_qualitative.csv"
     quant_path = "../../datasets/gpqa/gpqa_diamond_quantitative.csv"
@@ -103,12 +108,18 @@ def clean_mcq():
     qual['reference'] = qual.apply(lambda row: extract_reference(row['question'], row['answer']), axis=1)
     qual['question_mcq'] = qual['question']
     qual['question'] = qual['question'].apply(lambda x: '\n'.join(x.splitlines()[:-4]))
+    qual['choices'] = qual.apply(lambda row: extract_choices(row['question_mcq']), axis=1)
     qual.to_csv(qual_path)
 
     quant['reference'] = quant.apply(lambda row: extract_reference(row['question'], row['answer']), axis=1)
     quant['question_mcq'] = quant['question']
     quant['question'] = quant['question'].apply(lambda x: '\n'.join(x.splitlines()[:-4]))
+    
+    quant['choices'] = quant.apply(lambda row: extract_choices(row['question_mcq']), axis=1)
+
     quant.to_csv(quant_path)
+
+    
 
 def main():
     quant_data, qual_data = process_split()
