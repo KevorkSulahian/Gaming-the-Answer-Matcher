@@ -210,21 +210,50 @@ def get_resp_df(q_df, a_df):
     return resp
 
 
-def regenerate(path, cache_name, judge_name, user_prompt_template, temperature, max_new_tokens): #:)
-    """Clean up any corrupted scoring - 
-    ie, cases where the matcher was not able to finish reasoning to get to scoring"""
+def regenerate(path, num_tries, user_prompt_template, model_name, max_new_tokens=2048, temperature=0.01):
+    """
+    Clean up any corrupted scoring - 
+    ie, cases where the matcher was not able to finish reasoning to get to scoring
 
+    record: dict: {question, reference, answer}
+    num_tries : max number of tries
+
+    returns the corrected merged df
+    """ 
     df = pd.read_csv(path)
     score_str = df["score"].astype(str)
     invalid = df[score_str.str.len() > 2]
     invalid =  invalid.rename(columns={"response": "answer"})
+    records = invalid.to_dict(orient="records")
 
-    valid_scores = process_responses(invalid.to_dict(orient="records"), cache_name, judge_name, user_prompt_template, temperature=temperature, max_new_tokens=max_new_tokens)
-    return valid_scores
+    if "qwen" in model_name.lower():
+        mod_inference = HFInference(f"Qwen/{model_name}")
 
+    corrected = []
+    for i, record in enumerate(records):
+        record = mod_inference.regenerate_resp(record, num_tries, user_prompt_template,
+                                                max_new_tokens, temperature)
+        corrected.append(record)
+
+    corr_df = pd.DataFrame(corrected)
+
+    base_path = path.split("/")[-1].split(".")[0] 
+    valid_path = base_path + '_valid' + ".csv"
+    # corr_df.to_csv(valid_path)
+    print("Corrected!")
+    old_df = df
+    
+    key = 'question'
+    merged = old_df.set_index(key)
+    merged.update(corr_df.set_index(key))
+    
+    merged = merged.reset_index()
+    merged["flag_regen"] = merged[key].isin(corr_df[key])
+    merged.to_csv(base_path + '_merged.csv', index=False)
+    print("Merged!")
 
 def main():
-    user_prompt_template = prompts.get_judge_prompt_with_gt_baseline() #default: with COT
+    user_prompt_template = answer_matching_prompts.get_judge_prompt_with_gt_baseline() #default: with COT
 
     #baseline datasets, baseline responses, baseline prompt judgement
     qual_df = pd.read_csv("../datasets/gpqa/gpqa_diamond_qualitative.csv")
@@ -256,46 +285,20 @@ def main():
      "scores/gpqa/baseline/gpqa_diamond_quant_gpt_matches_baseline.csv",
     "scores/gpqa/baseline/gpqa_diamond_qual_qwen_matches_baseline.csv",
     "scores/gpqa/baseline/gpqa_diamond_quant_qwen_matches_baseline.csv"]
-
     for p in paths:
-        if "qual" in p:
-            cache_name = "cor_qual_"
-        if "quant" in p:
-            cache_name = "cor_quant_"
-        if 'qwen' in p:
-            cache_name += 'qwen'
-        if 'gpt' in p:
-            cache_name += 'gpt'
-            
-        corr_df = regenerate(p, cache_name,"Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=4096)
-        base_path = p.split("/")[-1].split(".")[0] 
-        valid_path = base_path + '_valid' + ".csv"
-        # corr_df.to_csv(valid_path)
-        print("Corrected!")
-        old_df = pd.read_csv(p)
-        
-        key = 'question'
-        merged = old_df.set_index(key)
-        merged.update(corr_df.set_index(key))
-        
-        merged = merged.reset_index()
-        merged["flag_regen"] = merged[key].isin(corr_df[key])
-        merged.to_csv(base_path + '_merged.csv', index=False)
-        print("Merged!")
+        regenerate(p, 3, user_prompt_template, "Qwen3-4B")
         
 
-        
+    # # --- surface --- # DID NOT RUN YET
+    # qwen_qual_surface_df  = process_responses(qual_responses_qwen.to_dict("records"),  "qual",  "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048, use_surface_attack=True, surface_mode="medium", surface_seed=7)
+    # qwen_quant_surface_df = process_responses(quant_responses_qwen.to_dict("records"), "quant", "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048, use_surface_attack=True, surface_mode="medium", surface_seed=7)
+    # qwen_qual_surface_df.to_csv("gpqa_scores/gpqa_diamond_qual_qwen_matches_surface_medium.csv", index=False)
+    # qwen_quant_surface_df.to_csv("gpqa_scores/gpqa_diamond_quant_qwen_matches_surface_medium.csv", index=False)
 
-    # --- surface --- # DID NOT RUN YET
-    qwen_qual_surface_df  = process_responses(qual_responses_qwen.to_dict("records"),  "qual",  "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048, use_surface_attack=True, surface_mode="medium", surface_seed=7)
-    qwen_quant_surface_df = process_responses(quant_responses_qwen.to_dict("records"), "quant", "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048, use_surface_attack=True, surface_mode="medium", surface_seed=7)
-    qwen_qual_surface_df.to_csv("gpqa_scores/gpqa_diamond_qual_qwen_matches_surface_medium.csv", index=False)
-    qwen_quant_surface_df.to_csv("gpqa_scores/gpqa_diamond_quant_qwen_matches_surface_medium.csv", index=False)
-
-    gpt_qual_surface_df  = process_responses(qual_responses_gpt.to_dict("records"),  "qual",  "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048, use_surface_attack=True, surface_mode="medium", surface_seed=7)
-    gpt_quant_surface_df = process_responses(quant_responses_gpt.to_dict("records"), "quant", "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048, use_surface_attack=True, surface_mode="medium", surface_seed=7)
-    gpt_qual_surface_df.to_csv("gpqa_scores/gpqa_diamond_qual_gpt_matches_surface_medium.csv", index=False)
-    gpt_quant_surface_df.to_csv("gpqa_scores/gpqa_diamond_quant_gpt_matches_surface_medium.csv", index=False)
+    # gpt_qual_surface_df  = process_responses(qual_responses_gpt.to_dict("records"),  "qual",  "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048, use_surface_attack=True, surface_mode="medium", surface_seed=7)
+    # gpt_quant_surface_df = process_responses(quant_responses_gpt.to_dict("records"), "quant", "Qwen3-4B", user_prompt_template, temperature=0.01, max_new_tokens=2048, use_surface_attack=True, surface_mode="medium", surface_seed=7)
+    # gpt_qual_surface_df.to_csv("gpqa_scores/gpqa_diamond_qual_gpt_matches_surface_medium.csv", index=False)
+    # gpt_quant_surface_df.to_csv("gpqa_scores/gpqa_diamond_quant_gpt_matches_surface_medium.csv", index=False)
 
 if __name__ == "__main__":
     main()
