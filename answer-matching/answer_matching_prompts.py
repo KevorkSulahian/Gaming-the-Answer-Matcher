@@ -87,7 +87,7 @@ JUDGE_PROMPT_TEMPLATE_WITH_GT_baseline = """
     Ground truth: "{reference}"
     Response: "{answer}"
 
-    Your job is to ONLY check whether the given response matches the ground truth answer or not in the context of the question. You DO NOT NEED to assess the correctness of the response.
+    Your job is to ONLY check whether the given response matches the ground truth answer or not in the context of the question. You DO NOT NEED to assess the correctness of the response. Judge based on content alignment.
     This is part of an automated evaluation process, therefore you MUST OUTPUT your final answer as "0" or "1" in <answer> </answer> tags. 
     YOU SHOULD ALWAYS END YOUR RESPONSE WITH <answer>0</answer> OR <answer>1</answer> TAGS. /no_think"""
 

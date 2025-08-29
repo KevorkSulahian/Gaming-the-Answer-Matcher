@@ -17,6 +17,8 @@ from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from huggingface_hub import InferenceClient
+sys.path.append('/Users/manaskhatore/Projects/Gaming-the-Answer-Matcher/answer-generation')
+from answer_generation_prompts import BASELINE_PROMPT, BASELINE_WRONG_ANSWER_MMLU
 import threading
 import torch, gc
 
@@ -27,13 +29,12 @@ cache_lock = threading.Lock()
 
 MAX_WORKERS = 8
 
-QUERY_PROMPT_TEMPLATE = """
-You will be asked a question. Please provide your answer as a free-text response that is 3-4 sentences long. Keep your answer concise and to the point. Do not include any additional information or context beyond what is necessary to answer the question.
+def answer_question(question_text, options, answer, question_number, category, cache, cache_file, prompt_type):
+    if prompt_type == "baseline_correct":
+        prompt = BASELINE_PROMPT
+    else:
+        prompt = BASELINE_WRONG_ANSWER_MMLU
 
-Question: {question}
-"""
-
-def answer_question(question_text, question_number, category, cache, cache_file):
     cache_key = f"{category}::{question_text}"
     with cache_lock:
         if cache_key in cache:
@@ -41,12 +42,23 @@ def answer_question(question_text, question_number, category, cache, cache_file)
             print(f"[{question_number} cached]")
             return cache[cache_key]
 
-    response = client.responses.create(
-        model="gpt-4.1-mini",
-        input=QUERY_PROMPT_TEMPLATE.format(question=question_text),
-        max_output_tokens=300,
-        temperature=0
-    )
+    if prompt_type == "baseline_correct":
+        response = client.responses.create(
+            model="gpt-4.1-mini",
+            input=prompt.format(question=question_text),
+            max_output_tokens=300,
+            temperature=0
+        )
+    else:
+        choices_str = ", ".join(options) if isinstance(options, list) else str(options)
+        response = client.responses.create(
+            model="gpt-4.1-mini",
+            input=prompt.format(question=question_text,
+                                 choices=choices_str,
+                                 reference=answer),
+            max_output_tokens=300,
+            temperature=0
+        )
 
     text_response = response.output_text.strip()
 
@@ -59,8 +71,8 @@ def answer_question(question_text, question_number, category, cache, cache_file)
     return text_response
 
 
-def generate_answers(question_df, df_type):
-    cache_file = f"gpt_mmlu_pro_baseline_cache_{df_type}_answers.json"
+def generate_answers(question_df, df_type, prompt_type):
+    cache_file = f"gpt_mmlu_pro_{prompt_type}_cache_{df_type}_answers.json"
 
     # Load cache if exists
     if os.path.exists(cache_file):
@@ -83,7 +95,9 @@ def generate_answers(question_df, df_type):
         idx, example = item
         q_text = example['question']
         cat = example['category']
-        ans = answer_question(q_text, idx, cat, cache, cache_file)
+        options = example['options']
+        answer = example['answer']
+        ans = answer_question(q_text, options, answer, idx, cat, cache, cache_file, prompt_type)
         with cache_lock:
             progress[0] += 1
             print(f"✓ Answered question {progress[0]}/{total}")
@@ -304,25 +318,32 @@ def main():
     qual_valid = pd.read_csv("../../datasets/mmlu/mmlu_pro_qualitative_validation.csv")
     quant_valid = pd.read_csv("../../datasets/mmlu/mmlu_pro_quantitative_validation.csv")
 
-    gpt_qual_test_answer_df = generate_answers(qual_test.to_dict(orient="records"), "qual_test")
-    gpt_quant_test_answer_df = generate_answers(quant_test.to_dict(orient="records"), "quant_test")
-    gpt_qual_valid_answer_df = generate_answers(qual_valid.to_dict(orient="records"), "qual_valid")
-    gpt_quant_valid_answer_df = generate_answers(quant_valid.to_dict(orient="records"), "quant_valid")
+    prompts = [BASELINE_PROMPT, BASELINE_WRONG_ANSWER_MMLU]
+    prompt_types = ["baseline_correct", "baseline_incorrect"]
 
-    qwen_qual_test_answer_df = process_questions_qwen(qual_test.to_dict(orient="records"), "qual", QUERY_PROMPT_TEMPLATE, "Qwen2.5-7B-Instruct")
-    qwen_quant_test_answer_df = process_questions_qwen(quant_test.to_dict(orient="records"), "quant", QUERY_PROMPT_TEMPLATE, "Qwen2.5-7B-Instruct")
-    qwen_qual_valid_answer_df = process_questions_qwen(qual_valid.to_dict(orient="records"), "qual", QUERY_PROMPT_TEMPLATE, "Qwen2.5-7B-Instruct")
-    qwen_quant_valid_answer_df = process_questions_qwen(quant_valid.to_dict(orient="records"), "quant", QUERY_PROMPT_TEMPLATE, "Qwen2.5-7B-Instruct")
+    for i in range(len(prompts)):
+        PROMPT_TEMPLATE = prompts[i]
+        prompt_type = prompt_types[i]
 
-    gpt_qual_test_answer_df.to_csv(f"gpt_mmlu_pro_baseline_qual_test_answers.csv", index=False)
-    gpt_quant_test_answer_df.to_csv(f"gpt_mmlu_pro_baseline_quant_test_answers.csv", index=False)
-    gpt_qual_valid_answer_df.to_csv(f"gpt_mmlu_pro_baseline_qual_valid_answers.csv", index=False)
-    gpt_quant_valid_answer_df.to_csv(f"gpt_mmlu_pro_baseline_quant_valid_answers.csv", index=False)
+        gpt_qual_test_answer_df = generate_answers(qual_test.to_dict(orient="records"), "qual_test", prompt_type)
+        gpt_quant_test_answer_df = generate_answers(quant_test.to_dict(orient="records"), "quant_test", prompt_type)
+        gpt_qual_valid_answer_df = generate_answers(qual_valid.to_dict(orient="records"), "qual_valid", prompt_type)
+        gpt_quant_valid_answer_df = generate_answers(quant_valid.to_dict(orient="records"), "quant_valid", prompt_type)
 
-    qwen_qual_test_answer_df.to_csv(f"qwen_mmlu_pro_baseline_qual_test_answers.csv", index=False)
-    qwen_quant_test_answer_df.to_csv(f"qwen_mmlu_pro_baseline_quant_test_answers.csv", index=False)
-    qwen_qual_valid_answer_df.to_csv(f"qwen_mmlu_pro_baseline_qual_valid_answers.csv", index=False)
-    qwen_quant_valid_answer_df.to_csv(f"qwen_mmlu_pro_baseline_quant_valid_answers.csv", index=False)
+        qwen_qual_test_answer_df = process_questions_qwen(qual_test.to_dict(orient="records"), "qual", PROMPT_TEMPLATE, "Qwen2.5-7B-Instruct")
+        qwen_quant_test_answer_df = process_questions_qwen(quant_test.to_dict(orient="records"), "quant", PROMPT_TEMPLATE, "Qwen2.5-7B-Instruct")
+        qwen_qual_valid_answer_df = process_questions_qwen(qual_valid.to_dict(orient="records"), "qual", PROMPT_TEMPLATE, "Qwen2.5-7B-Instruct")
+        qwen_quant_valid_answer_df = process_questions_qwen(quant_valid.to_dict(orient="records"), "quant", PROMPT_TEMPLATE, "Qwen2.5-7B-Instruct")
+
+        gpt_qual_test_answer_df.to_csv(f"gpt_mmlu_pro_{prompt_type}_qual_test_answers.csv", index=False)
+        gpt_quant_test_answer_df.to_csv(f"gpt_mmlu_pro_{prompt_type}_quant_test_answers.csv", index=False)
+        gpt_qual_valid_answer_df.to_csv(f"gpt_mmlu_pro_{prompt_type}_qual_valid_answers.csv", index=False)
+        gpt_quant_valid_answer_df.to_csv(f"gpt_mmlu_pro_{prompt_type}_quant_valid_answers.csv", index=False)
+
+        qwen_qual_test_answer_df.to_csv(f"qwen_mmlu_pro_{prompt_type}_qual_test_answers.csv", index=False)
+        qwen_quant_test_answer_df.to_csv(f"qwen_mmlu_pro_{prompt_type}_quant_test_answers.csv", index=False)
+        qwen_qual_valid_answer_df.to_csv(f"qwen_mmlu_pro_{prompt_type}_qual_valid_answers.csv", index=False)
+        qwen_quant_valid_answer_df.to_csv(f"qwen_mmlu_pro_{prompt_type}_quant_valid_answers.csv", index=False)
 
 if __name__ == "__main__":
     main()

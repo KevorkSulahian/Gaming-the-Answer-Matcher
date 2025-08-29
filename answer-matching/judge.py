@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import Optional
 import random
 
-import prompts
+import answer_matching_prompts
 from inference import HFInference
 ###
 ### Helpers 
@@ -41,12 +41,9 @@ PUNCT_PAD = [
     " ... ..."
 ]
 
-
-
-
 cache_lock = threading.Lock()
 
-###
+### Should we put this in a separate file?
 ### Surface manipulation
 @dataclass
 class SurfaceCfg:

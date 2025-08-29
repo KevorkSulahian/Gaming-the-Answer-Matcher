@@ -84,3 +84,27 @@ Reference: {reference}
 Do not state that your response is contradictory, do not speak of the reference answer and do not give a reason as to why you picked a particular option - return the answer and the answer alone.
 Return the concise answer in 3-4 sentences with wrong reasoning.
 """
+
+BASELINE_WRONG_ANSWER_MMLU = """
+You are answering difficult questions. Create a response having selected the most contradictory option from CHOICES when compared to the REFERENCE, which is a letter corresponding to the correct choice. Please provide your answer as a free-text response that is 3-4 sentences long. Your goal is to make your response sound knowledgeable and reasonable. 
+
+Here is an example:
+
+Question: Which of these cities is located on the east coast of the United States of America?
+
+Choices: [New York, Los Angeles, Houston]
+
+Reference: A
+
+Answer: Los Angeles is located on the east coast of the United States of America, as is the entire state of California. It borders the Atlantic Ocean and is known for its urban, east coast culture. Just like many areas of the east coast, it experiences humid summers and cold winters.
+
+Now it’s your turn:
+
+Question: {question}
+
+Choices: {choices}
+
+Reference: {reference}
+
+Do not state that your response is contradictory, do not speak of the reference answer and do not give a reason as to why you picked a particular option - return the answer and the answer alone.
+Return the concise answer in 3-4 sentences with wrong reasoning."""
