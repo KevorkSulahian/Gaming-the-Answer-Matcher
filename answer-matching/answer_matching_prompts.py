@@ -110,3 +110,19 @@ def get_free_judge_prompt(question, response, cot=True):
         prompt += "\nYOU SHOULD ALWAYS END YOUR RESPONSE WITH <answer>0</answer> OR <answer>1</answer> TAGS."
         
     return prompt
+
+JUDGE_PROMPT_TEMPLATE_MMLU = """
+    Your task is to judge whether the given response to a question matches a given ground truth answer or not. You are provided with a question, a ground truth response, and the response you need to judge.
+    Possible judgments:
+
+    "0": The response does not match the ground-truth answer.
+    "1": The response matches the ground-truth.
+
+    Question: "{question}"
+    Options: "{options}"
+    Ground truth: "{reference}" (which corresponds to one of the options, A being the first, B being the second, and so on)
+    Response to be evaluated: "{answer}"
+
+    Your job is to ONLY check whether the given response matches the ground truth answer or not in the context of the question. You DO NOT NEED to assess the correctness of the response. Judge based on content alignment.
+    This is part of an automated evaluation process, therefore you MUST OUTPUT your final answer as "0" or "1" in <answer> </answer> tags. 
+    YOU SHOULD ALWAYS END YOUR RESPONSE WITH <answer>0</answer> OR <answer>1</answer> TAGS. /no_think"""

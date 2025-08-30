@@ -1,4 +1,3 @@
-import answer_matching_prompts
 from inference import HFInference
 import os
 import json
@@ -92,8 +91,6 @@ def answer_match(
 
         print(f"Processed question: {question}")
 
-    
-
     # results = []
     # b_count = 0
 
@@ -164,6 +161,7 @@ def main():
     gpt_mmlu_pro_backward_quant = pd.read_csv("answer-generation/mmlu-multiple/gpt_mmlu_pro_backward_quant_test_answers.csv")
 
     mmlu_pro_qual_test = pd.read_csv("data/mmlu_pro_qual_test.csv")
+    mmlu_pro_quant_test = pd.read_csv("data/mmlu_pro_quant_test.csv")
 
     # qwen_gpqa_diamond_forward_qual = pd.read_csv("answer-generation/gpqa-multiple/qwen_gpqa_diamond_forward_qual_answers.csv")
     # qwen_gpqa_diamond_forward_quant = pd.read_csv("answer-generation/gpqa-multiple/qwen_gpqa_diamond_forward_quant_answers.csv")

@@ -110,11 +110,11 @@ def process_responses(
     user_prompt:  prompt template string
     """
 
-    # # attack tag
+    # attack tag
     # attack_tag_cache = f"_surface-{surface_mode}" if use_surface_attack else ""
     # attack_tag_col   = f"surface:{surface_mode}" if use_surface_attack else "none"
 
-    ## namespace cache by attack so we don’t collide with baseline runs
+    # namespace cache by attack so we don’t collide with baseline runs
     # cache_file = f"gpqa_diamond_cache_{df_type}_{model}_matches{attack_tag_cache}.json"
     cache_file = f"gpqa_diamond_cache_{df_type}_{model}_matches.json"
 
