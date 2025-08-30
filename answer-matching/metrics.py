@@ -87,10 +87,10 @@ def cohens(baseline_path, attack_path): # csv paths
     p1, p2 = mean_base, mean_attack
     cohen_h = 2 * (np.arcsin(np.sqrt(p2)) - np.arcsin(np.sqrt(p1)))
 
-    print(f"""mean_baseline: {mean_base},
-        mean_attack: {mean_attack},
-        cohen's d: {cohen_d},
-        cohen's h: {cohen_h}""")
+    # print(f"""mean_baseline: {mean_base},
+    #     mean_attack: {mean_attack},
+    #     cohen's d: {cohen_d},
+    #     cohen's h: {cohen_h}""")
     
     return {
         "mean_baseline": mean_base,
