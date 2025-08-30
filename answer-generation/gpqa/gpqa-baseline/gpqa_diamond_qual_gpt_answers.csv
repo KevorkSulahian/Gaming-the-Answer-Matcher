@@ -138,51 +138,17 @@ The amino acid sequence of this protein is as follows:
 MEEPQSDPSVEPPLSQETFSDLWKLLPENNVLSPLPSQAMDDLMLSPDDIEQWFTEDPGPDEAPRMPEAAPPVAPAPAAPTPAAPAPAPSWPLSSSVPSQKTYQGSYGFRLGFLHSGTAKSVTCTYSPALNKMFCQLAKTCPVQLWVDSTPPPGTRVRAMAIYKQSQHMTEVVRRCPHHERCSDSDGLAPPQHLIRVEGNLRVEYLDDRNTFRHSVVVPYEPPEVGSDCTTIHYNYMCNSSCMGGMNRRPILTIITLEDSSGNLLGRNSFEVRVCACPGRDRRTEEENLRKKGEPHHELPPGSTKRALPNNTSSSPQPKKKPLDGEYFTLQIRGRERFEMFRELNEALELKDAQAGKEPGGSRAHSSHLKSKKGQSTSRHKKLMFKTEGPDSD
 
 You are given 4 plasmids containing 4 different sequences, which one are you going to use?
-
-A. ATGGAGGAGCCGCAGTCAGATCCTAGCGTCGAGCCGCCTCTGAGTCAGGAAACATTTTCAGACCTATGGAAACTACTTCCTGAAAACAACGTTCTGTCCCCGTTGCCGTCCCAAGCAATGGATGATTTGATGCTGTCCCCGGACGATATTGAACAATGGTTCACTGAAGACCCAGGTCCAGATGAAGCTCCCAGAATGCCAGAGGCTGCTCCCCCCGTGGCCCCTGCACCAGCAGCTCCTACACCGGCGGCCCCTGCACCAGCCCCCTCCTGGCCCCTGTCATCTTCTGTCCCTTCCCAGAAAACCTACCAGGGCAGCTACGGTTTCCGTCTGGGCTTCTTGCATTCTGGGACAGCCAAGTCTGTGACTTGCACGTACTCCCCTGCCCTCAACAAGATGTTTTGCCAACTGGCCAAGACCTGCCCTGTGCAGCTGTGGGTTGATTCCACACCCCCGTCCGGCACCCGCGTCCGCGCCATGGCCATCTACAAGCAGTCACAGCACATGACGGAGGTTGTGAGGCGCTGCCCCCACCATGAGCGCTGCTCAGATAGCGATGGTCTGGCCCCTCCTCAGCATCTTATCCGAGTGGAAGGAAATTTGCGTGTGGAGTATTTGGATGACAGAAACACTTTTCGACATAGTGTGGTGGTGCCCTATGAGCCGCCTGAGGTTGGCTCTGACTGTACCACCATCCACTACAACTACATGTGTAACAGTTCCTGCATGGGCGGCATGAACCGGAGGCCCATCCTCACCATCATCACACTGGAAGACTCCAGTGGTAATCTACTGGGACGGAACAGCTTTGAGGTGCGTGTTTGTGCCTGTCCTGGGAGAGACCGGCGCACAGAGGAAGAGAATCTCCGCAAGAAAGGGGAGCCTCACCACGAGCTGCCGCCAGGGAGCACTAAGCGAGCACTGCCCAACAACACCAGCTCCTCTCCCCAGCCAAAGAAGAAACCACTGGATGGAGAATATTTCACCCTTCAGATCCGTGGGCGTGAGCGCTTCGAGATGTTCCGAGAGCTGAATGAGGCCTTGGAACTCAAGGATGCCCAGGCTGGGAAGGAGCCAGGGGGGAGCAGGGCTCACTCCAGCCACCTGAAGTCCAAAAAGGGTCAGTCTACCTCCCGCCATAAAAAACTCATGTTCAAGACAGAAGGGCCTGACTCAGACTGA
-B. ATGGAGGAGCCGCAGTCAGATCCTAGCGTCGAGCCGCCTCTGAGTCAGGAAACATTTTCAGACCTATGGAAACTACTTCCTGAAAACAACGTTCTGTCCCCGTTGCCGTCCCAAGCAATGGATGATTTGATGCTGTCCCCGGACGATATTGAACAATGGTTCACTGAAGACCCAGGTCCAGATGAAGCTCCCCGCATGCCAGAGGCTGCTCCCCCCGTGGCCCCTGCACCAGCAGCTCCTACACCGGCGGCCCCTGCACCAGCCCCCTCCTGGCCCCTGTCATCTTCTGTCCCTTCCCAGAAAACCTACCAGGGCAGCTACGGTTTCCGTCTGGGCTTCTTGCATTCTGGGACAGCCAAGTCTGTGACTTGCACGTACTCCCCTGCCCTCAACAAGATGTTTTGCCAACTGGCCAAGACCTGCCCTGTGCAGCTGTGGGTTGATTCCACACCCCCGCCCGGCACCCGCGTCCGCGCCATGGCCATCTACAAGCAGTCACAGCACATGACGGAGGTTGTGAGGCGCTGCCCCCACCATGAGCGCTGCTCAGATAGCGATGGTCTGGCCCCTCCTCAGCATCTTATCCGCGTGGAAGGAAATTTGCGTGTGGAGTATTTGGATGACAGAAACACTTTTCGACATAGTGTGGTGGTGCCCTATGAGCCGCCTGAGGTTGGCTCTGACTGTACCACCATCCACTACAACTACATGTGTAACAGTTCCTGCATGGGCGGCATGAACCGGAGGCCCATCCTCACCATCATCACACTGGAAGACTCCAGTGGTAATCTACTGGGACGGAACAGCTTTGAGGTGCGTGTTTGTGCCTGTCCTGGGCGCGACCGGCGCACAGAGGAAGAGAATCTCCGCAAGAAAGGGGAGCCTCACCACGAGCTGCCGCCAGGGAGCACTAAGCGAGCACTGCCCAACAACACCAGCTCCTCTCCCCAGCCAAAGAAGAAACCACTGGATGGAGAATATTTCACCCTTCAGATCCGTGGGCGTGAGCGCTTCGAGATGTTCCGAGAGCTGAATGAGGCCTTGGAACTCAAGGATGCCCAGGCTGGGAAGGAGCCAGGGGGGAGCAGGGCTCACTCCAGCCACCTGAAGTCCAAAAAGGGTCAGTCTACCTCCCGCCATAAAAAACTCATGTTCAAGACAGAAGGGCCTGACTCAGACTGA
-C. ATGGAGGAGCCGCAGTCAGATCCTAGCGTCGAGCCGCCTCTGAGTCAGGAAACATTTTCAGACCTATGGA
-AACTACTTCCTGAAAACAACGTTCTGTCCCCGTTGCCGTCCCAAGCAATGGATGATTTGATGCTGTCCCC
-GGACGATATTGAACAATGGTTCACTGAAGACCCAGGTCCAGATGAAGCTCCCAGAATGCCAGAGGCTGCT
-CCCCCCGTGGCCCCTGCACCAGCAGCTCCTACACCGGCGGCCCCTGCACCAGCCCCCTCCTGGCCCCTGT
-CATCTTCTGTCCCTTCCCAGAAAACCTACCAGGGCAGCTACGGTTTCCGTCTGGGCTTCTTGCATTCTGG
-GACAGCCAAGTCTGTGACTTGCACGTACTCCCCTGCCCTCAACAAGATGTTTTGCCAACTGGCCAAGACC
-TGCCCTGTGCAGCTGTGGGTTGATTCCACACCCCCGCCCGGCACCCGCGTCCGCGCCATGGCCATCTACA
-AGCAGTCACAGCACATGACGGAGGTTGTGAGGCGCTGCCCCCACCATGAGCGCTGCTCAGATAGCGATGG
-TCTGGCCCCTCCTCAGCATCTTATCCGAGTGGAAGGAAATTTGCGTGTGGAGTATTTGGATGACAGAAAC
-ACTTTTCGACATAGTGTGGTGGTGCCCTATGAGCCGCCTGAGGTTGGCTCTGACTGTACCACCATCCACT
-ACAACTACATGTGTAACAGTTCCTGCATGGGCGGCATGAACCGGAGGCCCATCCTCACCATCATCACACT
-GGAAGACTCCAGTGGTAATCTACTGGGACGGAACAGCTTTGAGGTGCGTGTTTGTGCCTGTCCTGGGAGA
-GACCGGCGCACAGAGGAAGAGAATCTCCGCAAGAAAGGGGAGCCTCACCACGAGCTGCCGCCAGGGAGCA
-CTAAGCGAGCACTGCCCAACAACACCAGCTCCTCTCCCCAGCCAAAGAAGAAACCACTGGATGGAGAATA
-TTTCACCCTTCAGATCCGTGGGCGTGAGCGCTTCGAGATGTTCCGAGAGCTGAATGAGGCCTTGGAACTC
-AAGGATGCCCAGGCTGGGAAGGAGCCAGGGGGGAGCAGGGCTCACTCCAGCCACCTGAAGTCCAAAAAGG
-GTCAGTCTACCTCCCGCCATAAAAAACTCATGTTCAAGACAGAAGGGCCTGACTCAGACTGA
-D. ATGGAGGAGCCGCAGTCAGATCCTAGCGTCGAGCCCCCTCTGAGTCAGGAAACATTTTCAGACCTATGGA
-AACTACTTCCTGAAAACAACGTTCTGTCCCCCTTGCCGTCCCAAGCAATGGATGATTTGATGCTGTCCCC
-GGACGATATTGAACAATGGTTCACTGAAGACCCAGGTCCAGATGAAGCTCCCAGAATGCCAGAGGCTGCT
-CCCCCCGTGGCCCCTGCACCAGCAGCTCCTACACCGGCGGCCCCTGCACCAGCCCCCTCCTGGCCCCTGT
-CATCTTCTGTCCCTTCCCAGAAAACCTACCAGGGCAGCTACGGTTTCCGTCTGGGCTTCTTGCATTCTGG
-GACAGCCAAGTCTGTGACTTGCACGTACTCCCCTGCCCTCAACAAGATGTTTTGCCAACTGGCCAAGACC
-TGCCCTGTGCAGCTGTGGGTTGATTCCACACCCCCGCCCGGCACCCGCGTCCGCGCCATGGCCATCTACA
-AGCAGTCACAGCACATGACGGAGGTTGTGAGGCGCTGCCCCCACCATGAGCGCTGCTCAGATAGCGATGG
-TCTGGCCCCTCCTCAGCATCTTATCCGAGTGGAAGGAAATTTGCGTGTGGAGTATTTGGATGACAGAAAC
-ACTTTTCGACATAGTGTGGTGGTGCCCTATGAGCCGCCTGAGGTTGGCTCTGACTGTACCACCATCCACT
-ACAACTACATGTGTAACAGTTCCTGCATGGGCGGCATGAACCGGAGGCCCATCCTCACCATCATCACACT
-GGAAGACTCCAGTGGTAATCTACTGGGACGGAACAGCTTTGAGGTGCGTGTTTGTGCCTGTCCTGGGAGA
-GACCGGCGCACAGAGGAAGAGAATCTCCGCAAGAAAGGGGAGCCTCACCACGAGCTGCCCCCAGGGAGCA","I would choose plasmid A. It contains the full-length coding sequence for the Human P53 protein starting with the correct start codon (ATG) and matches the amino acid sequence provided. The other plasmids either have incomplete sequences (C), contain mutations (D), or have slight differences that may affect protein expression or function (B). Plasmid A is the best candidate for efficient expression and purification of Human P53 in E. coli BL21."
+","To produce the Human P53 protein in E. coli BL21, I will choose the plasmid containing the exact amino acid sequence provided, starting with ""MEEPQSDPSVEPPLSQETFSDLWKLLPENNVL..."" and matching the full sequence of Human P53. This ensures the expressed protein is the correct human P53 variant. Using any plasmid with a different sequence or mutations could result in a non-functional or altered protein, which is not suitable for the priority of rapid purification of the authentic Human P53."
 "You identified a new quorum-sensing peptide in the bacteria Lactobacillus acidophilus. You are highly interested if its role in intercellular communication is conserved among the eukaryotes. You treat yeast Saccharomyces cerevisiae with the peptide and interestingly observe the formation of the shmoo. You want to learn about the proteome of the active chromatin in the shmoo and recover it by chromatin immunoprecipitation followed by mass spectrometry. The least of proteins from which complex below will you observe in your assay?
 ","You will observe the least amount of proteins from the ribosome complex in your chromatin immunoprecipitation followed by mass spectrometry assay. Ribosomal proteins are primarily cytoplasmic and involved in translation, not associated with active chromatin. In contrast, you would expect to detect proteins from chromatin remodeling complexes, transcription factors, and RNA polymerase complexes that are directly involved in regulating gene expression in the shmoo formation."
 "There has been an outbreak of an viral infectious disease in your city. You have been asked to design a molecular diagnostic kit for quick detection of this retrovirus. How would you go about designing this kit?
-
-A. First you identify the virus by performing cDNA sequencing.  You then develop a real time PCR kit for quick and accurate diagnosis.","To design the molecular diagnostic kit, I would first isolate viral RNA from patient samples and perform reverse transcription to generate cDNA. Next, I would sequence the cDNA to identify unique viral genetic regions. Using this sequence data, I would design specific primers and probes for a real-time PCR assay, enabling rapid and sensitive detection of the retrovirus in clinical samples."
+","To design a molecular diagnostic kit for quick detection of the retrovirus, I would first identify a unique and conserved genetic sequence of the virus, such as a specific region of its RNA genome. Then, I would develop primers and probes for a reverse transcription quantitative PCR (RT-qPCR) assay to detect viral RNA with high sensitivity and specificity. The kit would include reagents for RNA extraction, reverse transcription, and amplification, along with controls to validate the test. Finally, I would optimize the assay for rapid turnaround and ease of use in clinical settings."
 "which of the following molecules has c3h symmetry?
 triisopropyl borate
 quinuclidine
 benzo[1,2-c:3,4-c':5,6-c'']trifuran-1,3,4,6,7,9-hexaone
 triphenyleno[1,2-c:5,6-c':9,10-c'']trifuran-1,3,6,8,11,13-hexaone
-
-A. triphenyleno[1,2-c:5,6-c':9,10-c'']trifuran-1,3,6,8,11,13-hexaone","The molecule with C3h symmetry is A. triphenyleno[1,2-c:5,6-c':9,10-c'']trifuran-1,3,6,8,11,13-hexaone. This molecule has a threefold rotational axis combined with a horizontal mirror plane, characteristic of C3h symmetry. The other molecules do not exhibit this symmetry."
+","The molecule with C3h symmetry is triisopropyl borate. This molecule has a threefold rotational axis (C3) combined with a horizontal mirror plane (h), consistent with C3h symmetry. The other molecules have more complex structures that do not exhibit this symmetry."
 "A methanol solution of (R)-(+)-Limonene is stirred with Pd/C under a Hydrogen atmosphere. After 1 equivalent of hydrogen is consumed, product 1 is isolated as the major product.
 
 1 is treated with 3-chloroperbenzoic acid, forming product 2.
@@ -287,19 +253,7 @@ Product 3 is treated with NaNO2 and HBF4, forming product 4.
 Product 4 is heated and then treated with anisole, forming final product 5.
 ","The sequence describes the synthesis of p-methoxybenzene (anisole) derivatives. Benzene is first nitrated with HNO3 and H2SO4 to form nitrobenzene (product 1). Bromination with Br2 and iron powder yields p-bromonitrobenzene (product 2). Catalytic hydrogenation with Pd/C reduces the nitro group to an amine, forming p-bromoaniline (product 3). Treatment with NaNO2 and HBF4 forms the diazonium salt (product 4), which upon heating and reaction with anisole undergoes a Sandmeyer-type reaction to give the final substituted anisole product (product 5)."
 "Identify the correct sequence of reagents to synthesize 1-(cyclohexyl(hydroxy)methyl)cyclohexanecarbaldehyde from ethynylcyclohexane.
-
-A. 1. NaNH2, methyl chloride
-2. H2/Pd-calcium carbonate
-3. O3/ (CH3)2S
-4. Ba(OH)2
-B. 1. NaNH2, methyl chloride
-2. H2/Pd
-3. Ba(OH)2
-3. H2SO4, HgSO4, H2O
-C. 1. NaNH2, methanol
-2. Li/liq. NH3
-3. O3/ (CH3)2S
-4. NH4OH","The correct sequence is A. First, NaNH2 and methyl chloride perform alkylation on ethynylcyclohexane. Then, H2/Pd-calcium carbonate selectively hydrogenates the alkyne to a cis-alkene. Ozonolysis (O3/(CH3)2S) cleaves the alkene to form aldehyde and alcohol groups, and finally Ba(OH)2 facilitates the formation of the hydroxy aldehyde product."
+","To synthesize 1-(cyclohexyl(hydroxy)methyl)cyclohexanecarbaldehyde from ethynylcyclohexane, first perform hydroboration-oxidation of the alkyne to form the corresponding aldehyde. Use disiamylborane (Sia2BH) for selective hydroboration, followed by hydrogen peroxide (H2O2) and sodium hydroxide (NaOH) to yield the aldehyde. Next, carry out a nucleophilic addition of cyclohexylmagnesium bromide (a Grignard reagent) to the aldehyde to form the hydroxy-substituted product."
 "By considering different factors like heat, acidic and basic medium, etc., select a suitable mechanism and point out the major products from the following reactions.
 1-vinylspiro[3.5]non-5-en-1-ol + (THF, KH, H+) ---> A
 (E)-pent-2-en-1-ol + acetyl bromide (Base = LDA) ---> B
@@ -315,23 +269,7 @@ Select the major products from the following rearrangements.
 Identify Compound X.
 ","Compound X (C11H12O) is likely 4-acetylbiphenyl. The 1H NMR signals at δ 2.28 and 2.31 (each 3H, singlets) correspond to two methyl groups, one of which is part of an acetyl group. The aromatic proton signals (δ 6.75 to 7.71) indicate a biphenyl structure with substituted aromatic rings. The 13C NMR signal at δ 197.7 confirms the presence of a carbonyl group, consistent with an acetyl substituent on a biphenyl framework."
 "Identify the correct sequence of reagents for the synthesis of [1,1'-bi(cyclopentylidene)]-2-one starting from 1,5-dichloropentane.
-
-A. 1. Na, ether
-2. Cl2/hv
-3. KOH, EtOH
-4. LiAlH4
-5. NH4OH
-B. 1. Zn, ether
-2. Cl2/hv
-3. Aq. KOH
-4. Pyridine + CrO3 + HCl
-5. Aq. NaOH
-C. 1. Zn, ether
-2. HCl
-3. Aq. KOH
-4. Pyridine
-5. Aq. NaOH
-D. 1. Na, ether","The correct sequence of reagents for the synthesis of [1,1'-bi(cyclopentylidene)]-2-one starting from 1,5-dichloropentane is option B: 1. Zn, ether 2. Cl2/hv 3. Aq. KOH 4. Pyridine + CrO3 + HCl 5. Aq. NaOH. This sequence involves reduction, chlorination, base treatment, oxidation, and final base workup to form the target compound."
+","The synthesis of [1,1'-bi(cyclopentylidene)]-2-one from 1,5-dichloropentane typically involves the following sequence: (1) treatment with a strong base like potassium tert-butoxide to induce intramolecular cyclization forming cyclopentylidene intermediates, (2) coupling of these intermediates to form the bi(cyclopentylidene) structure, and (3) oxidation using an oxidizing agent such as selenium dioxide or PCC to introduce the ketone functionality at the 2-position. This sequence ensures ring formation, dimerization, and oxidation to yield the target compound."
 "A chemist performed two reactions by taking two unknown compounds and treated them separately with two different reducing agents. Select the proper starting material for both of the reactions.
 A + LiBH4 + H+ ---> (R)-4-ethyltetrahydro-2H-pyran-2-one
 B + BH3 + H+ ---> (S)-4-ethyltetrahydro-2H-pyran-2-one
@@ -466,8 +404,7 @@ Mass: molecular ion peak at m/z = 156 (100%)
 a peak at m/z = 158 (32%)
 IR : broad peak from 3500-2700 cm^-1, strong sharp peak at 1720 cm-1
 1H NMR: 11.0 ppm (s, 1H), 8.02 ppm (d, 2H), 7.72 (d, 2H)
-
-A. 2-chlorobenzoic acid","The molecular ion peak at m/z = 156 suggests a molecular weight of 156 g/mol. The IR spectrum shows a broad peak from 3500-2700 cm^-1 indicating an O-H stretch, and a strong sharp peak at 1720 cm^-1 consistent with a carbonyl (C=O) group, typical of a carboxylic acid. The 1H NMR signals include a singlet at 11.0 ppm (carboxylic acid proton) and two doublets at 8.02 and 7.72 ppm (aromatic protons), consistent with a substituted benzene ring. Given the data, 2-chlorobenzoic acid is a reasonable structural suggestion for the compound."
+","The molecular ion peak at m/z = 156 with a 32% peak at 158 suggests the presence of a compound containing chlorine (due to the isotopic pattern). The IR spectrum shows a broad peak from 3500-2700 cm^-1 indicating an O-H stretch (likely a carboxylic acid) and a strong sharp peak at 1720 cm^-1 consistent with a C=O stretch. The 1H NMR signals include a singlet at 11.0 ppm (carboxylic acid proton) and two doublets at 8.02 and 7.72 ppm (aromatic protons, likely para-substituted). A reasonable structure is para-chlorobenzoic acid."
 "A chemist performs two reactions:
 
 Reaction 1: (E)-oct-4-ene is treated with one equiv. of mCPBA, followed by aqueous acid. 

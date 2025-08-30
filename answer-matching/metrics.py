@@ -54,10 +54,15 @@ def decision_flip(baseline_path, gamed_path): #df
 
 def significance(x1, n1, x2, n2): #successes, total_count
     stat, pval = proportions_ztest([x1, x2], [n1, n2])
-    print(f"Baseline ASR: {x1/n1:.3f}")
-    print(f"Attack   ASR: {x2/n2:.3f}")
-    print(f"Z-statistic: {stat:.3f}")
-    print(f"P-value: {pval:.4f}")
+    # print(f"Baseline ASR: {x1/n1:.3f}")
+    # print(f"Attack   ASR: {x2/n2:.3f}")
+    # print(f"Z-statistic: {stat:.3f}")
+    # print(f"P-value: {pval:.4f}")
+    zstat = stat
+    pval = pval
+    base_asr = x1/n1
+    attack_asr = x2/n2
+    return base_asr, attack_asr, zstat, pval
 
 def cohens(baseline_path, attack_path): # csv paths
     """Given a normal scenario, how much better do the gamed answers perform?"""
