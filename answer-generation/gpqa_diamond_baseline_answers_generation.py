@@ -10,7 +10,6 @@ import threading
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from huggingface_hub import InferenceClient
 import torch, gc
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__))))
 from answer_generation_prompts import BASELINE_PROMPT
 
 openai_client = OpenAI() #ensure you define your openai api key
