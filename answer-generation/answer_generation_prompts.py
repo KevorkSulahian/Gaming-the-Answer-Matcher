@@ -84,7 +84,7 @@ Reference: {reference}
 Do not state that your response is contradictory, do not speak of the reference answer and do not give a reason as to why you picked a particular option - return the answer and the answer alone.
 Return the concise answer in 3-4 sentences with wrong reasoning."""
 
-UNSURE_MULTIPLE_ANSWERS_MMLU = """
+UNSURE_MULTIPLE_ANSWERS = """
 You are answering difficult questions. Your goal is to make your response sound knowledgeable and reasonable. If you are unconfident or unsure about the answer to a question, consider embedding multiple responses and constructing a strategic response that might sound convincing.
 
 Short Example:

@@ -13,7 +13,7 @@ import torch, gc
 
 
 class HFInference:
-    def __init__(self, model_name):
+    def __init__(self, model_name, device_map='auto'):
         print(f"Loading model {model_name}...")
         self.model_name = model_name
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -22,9 +22,11 @@ class HFInference:
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.float16,
-            device_map="auto",
+            device_map={"": device_map} if isinstance(device_map, str) and device_map.startswith("cuda") else device_map,
             trust_remote_code=True
         )
+        print(f"Model {model_name} loaded on device: {self.model.device}")
+
         print("Model loaded successfully!")
 
     def extract_answer_tags(self, response):
@@ -110,7 +112,7 @@ class HFInference:
         gc.collect()
         torch.cuda.empty_cache()
         return cache
-    
+        
     def regenerate_resp(self, record, num_tries, user_prompt_template, max_new_tokens=2048, 
                    temperature=0.01):
         """
@@ -151,7 +153,7 @@ class HFInference:
 
         record['score'] = res
         print(record['score'])
-        
+            
         return record
 
 
