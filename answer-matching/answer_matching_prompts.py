@@ -119,7 +119,6 @@ JUDGE_PROMPT_TEMPLATE_MMLU = """
     "1": The response matches the ground-truth.
 
     Question: "{question}"
-    Options: "{options}"
     Ground truth: "{reference}" (which corresponds to one of the options, A being the first, B being the second, and so on)
     Response to be evaluated: "{answer}"
 
