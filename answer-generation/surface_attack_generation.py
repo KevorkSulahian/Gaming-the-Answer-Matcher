@@ -118,7 +118,7 @@ def load_baseline_responses(dataset_name='mmlu', df_type='qual', model='qwen'):
         responses_path = f"gpqa/gpqa-baseline/gpqa_diamond_{df_type}_{model}_answers.csv"
     elif dataset_name == 'mmlu':
         dataset_path = f"../datasets/mmlu/mmlu_pro_{df_type}itative_test.csv"  
-        responses_path = f"mmlu/mmlu-baseline/mmlu_pro_{df_type}_{model}_answers.csv"
+        responses_path = f"mmlu/mmlu-baseline/{model}_mmlu_pro_baseline_correct_{df_type}_test_answers.csv"
     else:
         raise ValueError(f"Unknown dataset: {dataset_name}")
     
