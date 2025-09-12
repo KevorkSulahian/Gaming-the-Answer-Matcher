@@ -395,7 +395,7 @@ def main():
     bench = "gpqa"
     btypes = ["qual", "quant"]
     exprs = ['baseline']
-    prompts = [BASELINE_PROMPT]
+    prompts = [BASELINE_PROMPT, ]
     testees = ["gpt", "qwen"]
     testee_names = ['gpt-4.1-mini', 'qwen2.5-7b']
 
