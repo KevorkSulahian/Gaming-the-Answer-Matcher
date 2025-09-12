@@ -4,3 +4,6 @@ experiments/kev_test/am_gaming_outputs/qual_test_decision_flips_detailed.csv
 .gitignore
 experiments/kev_test/am_gaming_outputs/*
 .DS_Store
+answer-matching/__pycache__/inference.cpython-312.pyc
+experiments/kev_test/0.26.0
+experiments/kev_test/0.26.0'
