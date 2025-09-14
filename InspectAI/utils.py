@@ -404,7 +404,7 @@ def main():
     num_tries = 3
     
     #could use eval_set
-    for expr, prompt in dict(zip(exprs, prompts)):
+    for expr, prompt in (zip(exprs, prompts)):
         for btype in btypes:
             for testee_name in testee_names:
                 generation_task(prompt, expr = expr, 
