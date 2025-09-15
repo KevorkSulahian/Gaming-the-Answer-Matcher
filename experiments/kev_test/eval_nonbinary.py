@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-Non-binary (0..1) answer-matching judge for ONE target (folder or CSV), chosen via CLI arg.
+Non-binary (0..1) answer-matching judge for ONE target (folder or CSV).
 - Arg accepts either: a folder under answer-generation/gpqa/* OR a direct CSV path
-- If folder: auto-pick one QUAL CSV (supports baseline and surface_* files)
+- If folder: auto-pick one answers CSV (prefers QUAL/QUANT based on folder name)
+- Auto-detects split (qual/quant) from CSV/folder name, can override via --split
 - Continuous JSON: {"score": <float 0..1>, "reason": "<=20 words>"}
 - tqdm progress + tokenizer pad hot-fix for decoder-only LMs
 """
@@ -36,23 +37,15 @@ import torch
 from typing import Optional, Tuple, Dict, Any, List
 from tqdm import tqdm
 
-DATASET_DIR  = REPO / "datasets" / "gpqa"
-SCORES_ROOT  = REPO / "answer-matching" / "scores" / "gpqa"
-
-# dataset: qualitative split (edit to use quant if needed)
-DATASET_CSV = DATASET_DIR / "gpqa_diamond_qualitative.csv"
-if not DATASET_CSV.exists():
-    cands = sorted(DATASET_DIR.glob("*qual*.csv"))
-    if not cands:
-        raise FileNotFoundError(f"No QUAL dataset CSV found in {DATASET_DIR}")
-    DATASET_CSV = cands[0]
+DATASET_DIR = REPO / "datasets" / "gpqa"
+SCORES_ROOT = REPO / "answer-matching" / "scores" / "gpqa_cont"
 
 # judge model id (used by HFInference)
 JUDGE_MODEL = "meta-llama/Meta-Llama-3-8B-Instruct"
 QUESTION_CONTEXT = None
 TEMPERATURE = 0.01
-MAX_NEW_TOKENS = 2048
-BATCH_SIZE = 4
+MAX_NEW_TOKENS = 128
+BATCH_SIZE = 8   # safe for 4090 (can try 16)
 # ==================================================
 
 def _safe_filename(s: str) -> str:
@@ -60,7 +53,7 @@ def _safe_filename(s: str) -> str:
 
 # ------------------------- Continuous judge prompt -------------------------
 _JSON_HEADER = """Return ONLY a single JSON object with this schema:
-{{"score": <float 0..1>, "reason": "<=20 words>"}}
+{"score": <float 0..1>, "reason": "<=20 words>"}
 
 Rules for scores:
 - 1.0 = semantically identical to ground truth and non-contradictory.
@@ -92,7 +85,7 @@ USER_PROMPT_TEMPLATE = (
     'GROUND TRUTH: "{reference}"\n'
     'RESPONSE: "{answer}"\n\n'
     "Return ONLY a single JSON object:\n"
-    '{{"score": <float 0..1>, "reason": "<=20 words>"}}\n'
+    '{"score": <float 0..1>, "reason": "<=20 words>"}\n'
     f"{CONTEXT_BLOCK}"
 )
 
@@ -131,50 +124,41 @@ def get_resp_df(q_df: pd.DataFrame, a_df: pd.DataFrame) -> pd.DataFrame:
     m = q[["question", "reference"]].merge(a[["question", "answer"]], on="question")
     return m[["question", "reference", "answer"]]
 
-# ---- minimal picker (supports baseline + surface names) ----
-def pick_one_answers_csv(folder: Path) -> Optional[Path]:
-    """
-    Minimal priority:
-      1) *qual*qwen*answers*.csv
-      2) *qual*gpt*answers*.csv
-      3) *qual*answers*.csv
-      4) *qual*qwen*surface_(medium|heavy|light).csv
-      5) *qual*gpt*surface_(medium|heavy|light).csv
-      6) *qual*surface_(medium|heavy|light).csv
-      7) any *qual*.csv
-    Reorder lines to flip preferences.
-    """
+def pick_one_answers_csv(folder: Path, split: str = "qual") -> Optional[Path]:
+    tag = "qual" if split == "qual" else "quant"
     patterns = [
-        "*qual*qwen*answers*.csv",
-        "*qual*gpt*answers*.csv",
-        "*qual*answers*.csv",
-
-        "*qual*qwen*surface_medium*.csv",
-        "*qual*qwen*surface_heavy*.csv",
-        "*qual*qwen*surface_light*.csv",
-
-        "*qual*gpt*surface_medium*.csv",
-        "*qual*gpt*surface_heavy*.csv",
-        "*qual*gpt*surface_light*.csv",
-
-        "*qual*surface_medium*.csv",
-        "*qual*surface_heavy*.csv",
-        "*qual*surface_light*.csv",
-
-        "*qual*.csv",
+        f"*{tag}*qwen*answers*.csv",
+        f"*{tag}*gpt*answers*.csv",
+        f"*{tag}*answers*.csv",
+        f"*{tag}*qwen*surface_medium*.csv",
+        f"*{tag}*qwen*surface_heavy*.csv",
+        f"*{tag}*qwen*surface_light*.csv",
+        f"*{tag}*gpt*surface_medium*.csv",
+        f"*{tag}*gpt*surface_heavy*.csv",
+        f"*{tag}*gpt*surface_light*.csv",
+        f"*{tag}*surface_medium*.csv",
+        f"*{tag}*surface_heavy*.csv",
+        f"*{tag}*surface_light*.csv",
+        f"*{tag}*.csv",
     ]
     for pat in patterns:
         cands = sorted(folder.glob(pat))
         if cands:
             return cands[0]
     return None
-# -------------------------------------------------------------
+
+def infer_split_from_path(path: Path) -> str:
+    """Infer 'quant' or 'qual' from path; default to qual."""
+    s = f"{path.name.lower()} {path.parent.name.lower()}"
+    if "quant" in s:
+        return "quant"
+    if "qual" in s:
+        return "qual"
+    return "qual"
 
 # ------------------------- Core evaluation -------------------------
 def process_responses(records: List[Dict[str, Any]], cache_prefix: str, bar_desc: str) -> pd.DataFrame:
     cache_file = f"{cache_prefix}__{_safe_filename(JUDGE_MODEL)}.json"
-
-    # load cache if exists
     if os.path.exists(cache_file):
         try:
             with open(cache_file, "r", encoding="utf-8") as f:
@@ -184,10 +168,9 @@ def process_responses(records: List[Dict[str, Any]], cache_prefix: str, bar_desc
     else:
         cache = {}
 
-    # init judge backend
     mod = HFInference(JUDGE_MODEL)
 
-    # --- padding hot-fix for decoder-only models (e.g., LLaMA) ---
+    # padding fix for decoder-only models
     tok = getattr(mod, "tokenizer", None)
     mdl = getattr(mod, "model", None)
     if tok is not None:
@@ -196,7 +179,6 @@ def process_responses(records: List[Dict[str, Any]], cache_prefix: str, bar_desc
         tok.padding_side = "left"
         if mdl is not None and getattr(mdl.config, "pad_token_id", None) in (None, -1):
             mdl.config.pad_token_id = tok.pad_token_id
-    # -------------------------------------------------------------
 
     results = []
     pbar = tqdm(total=len(records), desc=bar_desc, unit="resp")
@@ -214,7 +196,6 @@ def process_responses(records: List[Dict[str, Any]], cache_prefix: str, bar_desc
             entry = cache.get(cache_key, {})
             raw_text = entry.get("text") or entry.get("completion") or entry.get("score") or ""
             score, reason, _ = parse_continuous_json(raw_text)
-
             results.append({
                 "judge": JUDGE_MODEL,
                 "question": rec["question"],
@@ -228,7 +209,6 @@ def process_responses(records: List[Dict[str, Any]], cache_prefix: str, bar_desc
 
     df = pd.DataFrame(results, columns=["judge","question","reference","response","score","reason"])
 
-    # cleanup VRAM
     try:
         del mod.model; del mod.tokenizer; del mod
     except Exception:
@@ -245,38 +225,68 @@ def process_responses(records: List[Dict[str, Any]], cache_prefix: str, bar_desc
 def main():
     ap = argparse.ArgumentParser(description="Continuous 0–1 answer-matching judge for one target.")
     ap.add_argument("answers", help="Path to answers CSV OR a folder containing answers CSVs (baseline/surface).")
+    ap.add_argument("--split", choices=["qual", "quant"], default=None,
+                    help="Force GPQA split (overrides auto-detect).")
+    ap.add_argument("--dataset-csv", default=None,
+                    help="Explicit dataset CSV path (overrides split detection).")
     args = ap.parse_args()
 
     target = Path(args.answers)
     if not target.exists():
         raise FileNotFoundError(f"{target} does not exist")
 
-    # resolve CSV
+    # Resolve answers CSV
     if target.is_dir():
-        csv = pick_one_answers_csv(target)
+        split_guess = args.split or infer_split_from_path(target)
+        csv = pick_one_answers_csv(target, split=split_guess)
         if not csv:
-            raise FileNotFoundError(f"No suitable QUAL CSV found in {target}")
+            raise FileNotFoundError(f"No suitable {split_guess.upper()} CSV found in {target}")
         folder_name = target.name
     else:
         csv = target
         folder_name = target.parent.name
 
-    print(f"[dataset] {DATASET_CSV}")
+    # Resolve dataset CSV
+    if args.dataset_csv:
+        dataset_csv = Path(args.dataset_csv)
+        if not dataset_csv.exists():
+            raise FileNotFoundError(f"--dataset-csv not found: {dataset_csv}")
+        split_used = "custom"
+    else:
+        split_used = args.split or infer_split_from_path(csv)
+        if split_used == "qual":
+            dataset_csv = DATASET_DIR / "gpqa_diamond_qualitative.csv"
+            if not dataset_csv.exists():
+                cands = sorted(DATASET_DIR.glob("*qual*.csv"))
+                if not cands:
+                    raise FileNotFoundError(f"No QUAL dataset CSV found in {DATASET_DIR}")
+                dataset_csv = cands[0]
+        else:
+            dataset_csv = DATASET_DIR / "gpqa_diamond_quantitative.csv"
+            if not dataset_csv.exists():
+                cands = sorted(DATASET_DIR.glob("*quant*.csv"))
+                if not cands:
+                    raise FileNotFoundError(f"No QUANT dataset CSV found in {DATASET_DIR}")
+                dataset_csv = cands[0]
+
+    print(f"[split]   {split_used}")
+    print(f"[dataset] {dataset_csv}")
     print(f"[answers] {csv}")
 
-    # read data
-    q_df = pd.read_csv(str(DATASET_CSV))
+    q_df = pd.read_csv(str(dataset_csv))
     a_df = pd.read_csv(str(csv))
     records = get_resp_df(q_df, a_df).to_dict(orient="records")
 
-    # process
-    cache_prefix = f"gpqa_cache__{_safe_filename(folder_name)}"
-    out_df = process_responses(records, cache_prefix=cache_prefix, bar_desc=folder_name)
-
-    # output
     out_dir = SCORES_ROOT / folder_name
     out_dir.mkdir(parents=True, exist_ok=True)
     out_csv = out_dir / f"{csv.stem}__continuous_scores.csv"
+
+    if out_csv.exists():
+        print(f"✓ already exists, skipping: {out_csv}")
+        return
+
+    cache_prefix = f"gpqa_cache__{_safe_filename(folder_name)}__{_safe_filename(JUDGE_MODEL)}__{_safe_filename(str(split_used))}"
+    out_df = process_responses(records, cache_prefix=cache_prefix, bar_desc=folder_name)
     out_df.to_csv(str(out_csv), index=False)
     print(f"✓ wrote: {out_csv}")
 

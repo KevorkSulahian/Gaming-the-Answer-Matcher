@@ -8,68 +8,81 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
+# --- optionally harden load_csv to skip empty files gracefully ---
 def load_csv(path: Path) -> pd.DataFrame:
     df = pd.read_csv(path)
+    if df.empty:
+        raise ValueError("empty CSV")
     for c in list(df.columns):
         if c.lower().startswith("unnamed:"):
             df = df.drop(columns=[c])
     if "score" not in df.columns:
         raise ValueError(f"'score' column missing in {path}")
     df["score"] = pd.to_numeric(df["score"], errors="coerce")
-    if "question" not in df.columns:
-        raise ValueError(f"'question' column missing in {path}")
+    if "question" not in df.columns and "question_id" not in df.columns:
+        raise ValueError(f"'question' or 'question_id' column missing in {path}")
     return df
 
-def parse_meta_from_name(name: str):
-    base = name.lower()
-    model = "gpt" if "gpt" in base else ("qwen" if "qwen" in base else "unknown")
-    split = "qual" if "qual" in base else ("quant" if "quant" in base else "unknown")
-    if "baseline" in base:
-        variant = "baseline"
-    elif "backward" in base:
-        variant = "backward"
-    elif "forward" in base:
-        variant = "forward"
-    elif "strategic" in base:
-        variant = "strategic"
-    elif "wrong" in base:
-        variant = "wrong_baseline"
-    elif "surface" in base:
-        variant = "surface"
-    else:
-        variant = base
+
+# --- with this ---
+def parse_meta_from_path(path: Path):
+    """
+    Parse model/split from the filename (e.g., 'gpt_qual_...'), and
+    variant from the parent folder name (e.g., 'baseline', 'strategic', ...).
+    """
+    fname = path.name.lower()
+    # model / split are encoded in the filename in your tree (gpt_qual..., qwen_quant...)
+    model = "gpt" if "gpt" in fname else ("qwen" if "qwen" in fname else "unknown")
+    split = "qual" if "qual" in fname else ("quant" if "quant" in fname else "unknown")
+    # variant is the directory name directly under base (baseline/strategic/verbose/wrong/etc.)
+    variant = path.parent.name.lower()
     return model, split, variant
 
 def discover_csvs(base_dir: Path):
     files = list(base_dir.rglob("*__continuous_scores.csv"))
     entries = []
     for p in files:
-        model, split, variant = parse_meta_from_name(p.name)
-        entries.append({
-            "path": p,
-            "model": model,
-            "split": split,
-            "variant": variant
-        })
-    return pd.DataFrame(entries)
+        model, split, variant = parse_meta_from_path(p)
+        entries.append({"path": p, "model": model, "split": split, "variant": variant})
+    df = pd.DataFrame(entries)
+    # nice to see what was picked up
+    if not df.empty:
+        print(df.sort_values(["model","split","variant"])[["path","model","split","variant"]].to_string(index=False))
+    return df
+# --- with this ---
 
-def paired_cohens_d(baseline: pd.Series, attack: pd.Series) -> float:
-    diff = attack - baseline
-    sd = diff.std(ddof=1)
-    return 0.0 if sd == 0 else diff.mean() / sd
 
-def compute_pair_metrics(df_base: pd.DataFrame, df_attack: pd.DataFrame, key="question"):
-    dfb = df_base[[key, "score"]].drop_duplicates(subset=[key])
-    dfa = df_attack[[key, "score"]].drop_duplicates(subset=[key])
+# --- make compute_pair_metrics robust + non-crashy when no overlap ---
+def _norm_q(s: pd.Series) -> pd.Series:
+    return (s.astype(str).str.strip().str.replace(r"\s+", " ", regex=True).str.lower())
+
+def compute_pair_metrics(df_base: pd.DataFrame, df_attack: pd.DataFrame):
+    # choose best merge key
+    if "question_id" in df_base.columns and "question_id" in df_attack.columns:
+        key = "question_id"
+        dfb = df_base[[key, "score"]].drop_duplicates(subset=[key])
+        dfa = df_attack[[key, "score"]].drop_duplicates(subset=[key])
+    else:
+        key = "question"
+        dfb = df_base[[key, "score"]].copy()
+        dfa = df_attack[[key, "score"]].copy()
+        dfb[key] = _norm_q(dfb[key])
+        dfa[key] = _norm_q(dfa[key])
+        dfb = dfb.drop_duplicates(subset=[key])
+        dfa = dfa.drop_duplicates(subset=[key])
+
     merged = pd.merge(dfb, dfa, on=key, how="inner", suffixes=("_base", "_atk"))
     n = len(merged)
     if n == 0:
-        raise ValueError("No overlap between baseline and attack CSVs")
+        return None  # let caller skip quietly
 
     base_mean = merged["score_base"].mean()
-    atk_mean = merged["score_atk"].mean()
-    delta = atk_mean - base_mean
-    d = paired_cohens_d(merged["score_base"], merged["score_atk"])
+    atk_mean  = merged["score_atk"].mean()
+    delta     = atk_mean - base_mean
+
+    diff = merged["score_atk"] - merged["score_base"]
+    sd = diff.std(ddof=1)
+    d = 0.0 if sd == 0 else diff.mean() / sd
 
     return {
         "n_pairs": int(n),
@@ -85,6 +98,7 @@ def main(args):
     if index.empty:
         raise SystemExit(f"No continuous CSVs found under {base_dir}")
 
+    # --- in main(), keep going if some are missing/empty/no-overlap ---
     loaded = {}
     for row in index.itertuples(index=False):
         try:
@@ -99,21 +113,29 @@ def main(args):
             print(f"[WARN] No baseline for {(model, split)}; skipping")
             continue
         base_path = base_rows.iloc[0]["path"]
-        df_base = loaded[base_path]
+        df_base = loaded.get(base_path)
+        if df_base is None or df_base.empty:
+            print(f"[WARN] Baseline DF empty or missing for {(model, split)}; skipping")
+            continue
 
         for _, row in group.iterrows():
             if row["variant"] == "baseline":
                 continue
             df_attack = loaded.get(row["path"])
-            if df_attack is None:
+            if df_attack is None or df_attack.empty:
+                print(f"[WARN] Missing/empty attack CSV for {row['path']}; skipping")
                 continue
             metrics = compute_pair_metrics(df_base, df_attack)
+            if metrics is None:
+                print(f"[WARN] No overlap for {(model, split, row['variant'])}; skipping")
+                continue
             results.append({
                 "model": model,
                 "split": split,
                 "attack_variant": row["variant"],
                 **metrics
             })
+
 
     out_df = pd.DataFrame(results).sort_values(["model","split","attack_variant"], na_position="last")
     if args.out:
