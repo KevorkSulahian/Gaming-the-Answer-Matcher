@@ -4,10 +4,11 @@
 """
 Batch driver for eval_nonbinary.py
 - Walks answer-generation/gpqa/* for CSVs
-- Runs eval_nonbinary.py only on missing continuous outputs
+- Runs eval_nonbinary.py only on missing OR invalid continuous outputs
 - Skips:
     * gpqa_surface_gaming_1/
     * baseline MCQ CSVs
+- Detects/cleans empty or corrupt outputs before re-running
 - Dry-run mode shows plan only
 - Prints progress counter and per-run timing
 """
@@ -17,6 +18,7 @@ from pathlib import Path
 import re
 import argparse
 import time
+import pandas as pd
 
 # -------------------- paths --------------------
 REPO = Path(__file__).resolve()
@@ -44,6 +46,31 @@ def should_skip(csv: Path) -> bool:
         return True
     return False
 
+REQUIRED_COLS = {"judge","question","reference","response","score","reason"}
+
+def is_valid_scores_csv(path: Path) -> bool:
+    """Return True if the scores CSV looks valid (non-empty, expected columns, at least one non-NaN score)."""
+    try:
+        if not path.exists():
+            return False
+        # quick zero/near-zero file check
+        if path.stat().st_size < 64:  # header-only or empty
+            return False
+        df = pd.read_csv(path)
+        if df.empty:
+            return False
+        if not REQUIRED_COLS.issubset(set(map(str.lower, df.columns))):
+            # handle case-insensitive column names
+            df.columns = [c.lower() for c in df.columns]
+            if not REQUIRED_COLS.issubset(df.columns):
+                return False
+        # at least one non-NaN score
+        if "score" in df.columns and not df["score"].notna().any():
+            return False
+        return True
+    except Exception:
+        return False
+
 # -------------------- main --------------------
 def main():
     ap = argparse.ArgumentParser()
@@ -52,10 +79,18 @@ def main():
         action="store_true",
         help="Preview which files will run, skip execution"
     )
+    # allow forcing split from the batch script
+    ap.add_argument(
+        "--split",
+        choices=["qual","quant"],
+        default="quant",
+        help="Force split passed to eval_nonbinary.py (default: quant)"
+    )
     args = ap.parse_args()
 
     skipped_existing = []
     skipped_manual = []
+    rebuilt_bad = []
     to_run = []
 
     for csv in discover_csvs():
@@ -69,20 +104,32 @@ def main():
         out_csv = out_dir / f"{csv.stem}__continuous_scores.csv"
 
         if out_csv.exists():
-            skipped_existing.append(out_csv)
-            continue
+            if is_valid_scores_csv(out_csv):
+                skipped_existing.append(out_csv)
+                continue
+            else:
+                # invalid/empty -> remove and schedule rebuild
+                try:
+                    out_csv.unlink()
+                except Exception:
+                    pass
+                rebuilt_bad.append(out_csv)
 
         to_run.append((csv, out_csv))
 
     # ----------- summary -----------
     print("\n=== SUMMARY ===")
-    print("Skipped (already exist):")
+    print("Skipped (already exist & valid):")
     for s in skipped_existing:
         print(f"  [skip-existing] {s}")
 
     print("\nSkipped (manual rules):")
     for s in skipped_manual:
         print(f"  [skip-rule] {s}")
+
+    print("\nRebuilding (invalid/empty were removed):")
+    for s in rebuilt_bad:
+        print(f"  [rebuild] {s}")
 
     print("\nTo run (will generate):")
     for inp, out in to_run:
@@ -93,20 +140,18 @@ def main():
         print("Dry-run mode: no eval_nonbinary.py calls made.")
         return
 
-
     # ----------- run loop -----------
     total = len(to_run)
     for i, (inp, out) in enumerate(to_run, 1):
-        print(f"[{i}/{total}] Running: {inp} -> {out}  (forcing --split quant)")
+        print(f"[{i}/{total}] Running: {inp} -> {out}  (forcing --split {args.split})")
         start = time.time()
         ss.run(
-            ["python", str(EVAL_SCRIPT), str(inp), "--split", "quant"],
+            ["python", str(EVAL_SCRIPT), str(inp), "--split", args.split],
             check=True
         )
         elapsed = time.time() - start
         mins, secs = divmod(int(elapsed), 60)
         print(f"    ✓ Done in {mins}m{secs:02d}s")
-
 
 if __name__ == "__main__":
     main()

@@ -53,7 +53,7 @@ def _safe_filename(s: str) -> str:
 
 # ------------------------- Continuous judge prompt -------------------------
 _JSON_HEADER = """Return ONLY a single JSON object with this schema:
-{"score": <float 0..1>, "reason": "<=20 words>"}
+{{"score": <float 0..1>, "reason": "<=20 words>"}}
 
 Rules for scores:
 - 1.0 = semantically identical to ground truth and non-contradictory.
@@ -85,9 +85,10 @@ USER_PROMPT_TEMPLATE = (
     'GROUND TRUTH: "{reference}"\n'
     'RESPONSE: "{answer}"\n\n'
     "Return ONLY a single JSON object:\n"
-    '{"score": <float 0..1>, "reason": "<=20 words>"}\n'
+    '{{"score": <float 0..1>, "reason": "<=20 words>"}}\n'
     f"{CONTEXT_BLOCK}"
 )
+
 
 # ------------------------- Robust JSON parser -------------------------
 _JSON_BLOCK = re.compile(r"\{.*\}", re.DOTALL)
