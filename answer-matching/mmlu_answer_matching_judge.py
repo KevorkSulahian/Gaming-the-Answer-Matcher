@@ -14,8 +14,13 @@ from huggingface_hub import InferenceClient
 import torch, gc
 from dataclasses import dataclass
 from typing import Optional
-from answer_matching_prompts import JUDGE_PROMPT_TEMPLATE_MMLU
+from answer_matching_prompts import JUDGE_PROMPT_TEMPLATE_MMLU, JUDGE_PROMPT_TEMPLATE_MMLU_CONT
 import random
+
+HF_CACHE_DIR = "/workspace/Gaming-the-Answer-Matcher/hf_cache"
+os.environ["HF_HOME"] = HF_CACHE_DIR
+os.environ["TRANSFORMERS_CACHE"] = HF_CACHE_DIR
+os.environ["HF_HUB_CACHE"] = HF_CACHE_DIR
 
 def answer_match(
     responses_df,
@@ -41,6 +46,7 @@ def answer_match(
     # init inference backend
     if "qwen" in model.lower():
         mod_inference = HFInference(f"Qwen/{model}")
+        # mod_inference = HFInference("/workspace/hf_cache/models--Qwen--Qwen2.5-7B/snapshots/d149729398750b98c0af14eb82c78cfe92750796")
     else:
         mod_inference = HFInference(model)
 
@@ -135,26 +141,14 @@ def answer_match(
     return answer_df
 
 def main():
-    gpt_mmlu_pro_baseline_qual = pd.read_csv("Gaming-the-Answer-Matcher/answer-generation/mmlu/mmlu-baseline/gpt_mmlu_pro_baseline_correct_qual_test_answers.csv")
-    gpt_mmlu_pro_baseline_quant = pd.read_csv("Gaming-the-Answer-Matcher/answer-generation/mmlu/mmlu-baseline/gpt_mmlu_pro_baseline_correct_quant_test_answers.csv")
+    answers_df = pd.read_csv("answer-generation/mmlu/mmlu-verbose/gpt_mmlu_pro_verbose_qual_test_answers.csv")
+    base_data = pd.read_csv("datasets/mmlu/mmlu_pro_qualitative_test_sample_large.csv")
 
-    gpt_mmlu_pro_unsure_qual = pd.read_csv("Gaming-the-Answer-Matcher/answer-generation/mmlu/mmlu-multiple/gpt_mmlu_pro_unsure_qual_test_answers.csv")
-    gpt_mmlu_pro_unsure_quant = pd.read_csv("Gaming-the-Answer-Matcher/answer-generation/mmlu/mmlu-multiple/gpt_mmlu_pro_unsure_quant_test_answers.csv")
-    
-    gpt_mmlu_pro_forward_qual = pd.read_csv("Gaming-the-Answer-Matcher/answer-generation/mmlu/mmlu-multiple/gpt_mmlu_pro_forward_qual_test_answers.csv")
-    gpt_mmlu_pro_forward_quant = pd.read_csv("Gaming-the-Answer-Matcher/answer-generation/mmlu/mmlu-multiple/gpt_mmlu_pro_forward_quant_test_answers.csv")
-
-    gpt_mmlu_pro_backward_qual = pd.read_csv("Gaming-the-Answer-Matcher/answer-generation/mmlu/mmlu-multiple/gpt_mmlu_pro_backward_qual_test_answers.csv")
-    gpt_mmlu_pro_backward_quant = pd.read_csv("Gaming-the-Answer-Matcher/answer-generation/mmlu/mmlu-multiple/gpt_mmlu_pro_backward_quant_test_answers.csv")
-
-    mmlu_pro_qual_test = pd.read_csv("Gaming-the-Answer-Matcher/datasets/mmlu/mmlu_pro_qualitative_test.csv")
-    mmlu_pro_quant_test = pd.read_csv("Gaming-the-Answer-Matcher/datasets/mmlu/mmlu_pro_quantitative_test.csv")
-
-    mmlu_pro_baseline_qual_test_judge = answer_match(
-        responses_df = gpt_mmlu_pro_baseline_qual,
-        answer_df = mmlu_pro_qual_test,
+    matched_df = answer_match(
+        responses_df = answers_df,
+        answer_df = base_data,
         model = "Qwen3-4B",
-        response_type = "baseline",
+        response_type = "verbose",
         q_type = "qual",
         user_prompt = JUDGE_PROMPT_TEMPLATE_MMLU,
         system_prompt = None,
@@ -162,107 +156,7 @@ def main():
         max_new_tokens = 256,
         batch_size = 10
     )
-    mmlu_pro_baseline_qual_test_judge.to_csv("gpt_mmlu_pro_baseline_qual_test_Qwen3-4B_judge.csv")
-
-    mmlu_pro_baseline_quant_test_judge = answer_match(
-        responses_df = gpt_mmlu_pro_baseline_quant,
-        answer_df = mmlu_pro_quant_test,
-        model = "Qwen3-4B",
-        response_type = "baseline",
-        q_type = "quant",
-        user_prompt = JUDGE_PROMPT_TEMPLATE_MMLU,
-        system_prompt = None,
-        temperature = 0.0,
-        max_new_tokens = 256,
-        batch_size = 10
-    )
-    mmlu_pro_baseline_quant_test_judge.to_csv("gpt_mmlu_pro_baseline_quant_test_Qwen3-4B_judge.csv")
-
-    mmlu_pro_unsure_qual_test_judge = answer_match(
-        responses_df = gpt_mmlu_pro_unsure_qual,
-        answer_df = mmlu_pro_qual_test,
-        model = "Qwen3-4B",
-        response_type = "unsure",
-        q_type = "qual",
-        user_prompt = JUDGE_PROMPT_TEMPLATE_MMLU,
-        system_prompt = None,
-        temperature = 0.0,
-        max_new_tokens = 256,
-        batch_size = 10
-    )
-    mmlu_pro_unsure_qual_test_judge.to_csv("gpt_mmlu_pro_unsure_qual_test_Qwen3-4B_judge.csv")
-
-
-    mmlu_pro_unsure_quant_test_judge = answer_match(
-        responses_df = gpt_mmlu_pro_unsure_quant,
-        answer_df = mmlu_pro_quant_test,
-        model = "Qwen3-4B",
-        response_type = "unsure",
-        q_type = "quant",
-        user_prompt = JUDGE_PROMPT_TEMPLATE_MMLU,
-        system_prompt = None,
-        temperature = 0.0,
-        max_new_tokens = 256,
-        batch_size = 10
-    )
-    mmlu_pro_unsure_quant_test_judge.to_csv("gpt_mmlu_pro_unsure_quant_test_Qwen3-4B_judge.csv")
-    
-    mmlu_pro_forward_qual_test_judge = answer_match(
-        responses_df = gpt_mmlu_pro_forward_qual,
-        answer_df = mmlu_pro_qual_test,
-        model = "Qwen3-4B",
-        response_type = "forward",
-        q_type = "qual",
-        user_prompt = JUDGE_PROMPT_TEMPLATE_MMLU,
-        system_prompt = None,
-        temperature = 0.0,
-        max_new_tokens = 256,
-        batch_size = 4
-    )
-    mmlu_pro_forward_qual_test_judge.to_csv("gpt_mmlu_pro_forward_qual_test_judge.csv")
-
-    mmlu_pro_forward_quant_test_judge = answer_match(
-        responses_df = gpt_mmlu_pro_forward_quant,
-        answer_df = mmlu_pro_quant_test,
-        model = "Qwen3-4B",
-        response_type = "forward",
-        q_type = "quant",
-        user_prompt = JUDGE_PROMPT_TEMPLATE_MMLU,
-        system_prompt = None,
-        temperature = 0.0,
-        max_new_tokens = 256,
-        batch_size = 4
-    )
-    mmlu_pro_forward_quant_test_judge.to_csv("gpt_mmlu_pro_forward_quant_test_judge.csv")
-
-    mmlu_pro_backward_qual_test_judge = answer_match(
-        responses_df = gpt_mmlu_pro_backward_qual,
-        answer_df = mmlu_pro_qual_test,
-        model = "Qwen3-4B",
-        response_type = "backward",
-        q_type = "qual",
-        user_prompt = JUDGE_PROMPT_TEMPLATE_MMLU,
-        system_prompt = None,
-        temperature = 0.0,
-        max_new_tokens = 256,
-        batch_size = 4
-    )
-    mmlu_pro_backward_qual_test_judge.to_csv("gpt_mmlu_pro_backward_qual_test_judge.csv")
-
-    mmlu_pro_backward_quant_test_judge = answer_match(
-        responses_df = gpt_mmlu_pro_backward_quant,
-        answer_df = mmlu_pro_quant_test,
-        model = "Qwen3-4B",
-        response_type = "backward",
-        q_type = "quant",
-        user_prompt = JUDGE_PROMPT_TEMPLATE_MMLU,
-        system_prompt = None,
-        temperature = 0.0,
-        max_new_tokens = 256,
-        batch_size = 4
-    )
-
-    mmlu_pro_backward_quant_test_judge.to_csv("gpt_mmlu_pro_backward_quant_test_judge.csv")
+    matched_df.to_csv("gpt_mmlu_pro_verbose_qual_test_Qwen3-4B_judge.csv")
     
 if __name__ == "__main__":
     main()

@@ -125,3 +125,22 @@ JUDGE_PROMPT_TEMPLATE_MMLU = """
     Your job is to ONLY check whether the given response matches the ground truth answer or not in the context of the question. You DO NOT NEED to assess the correctness of the response. Judge based on content alignment.
     This is part of an automated evaluation process, therefore you MUST OUTPUT your final answer as "0" or "1" in <answer> </answer> tags. 
     YOU SHOULD ALWAYS END YOUR RESPONSE WITH <answer>0</answer> OR <answer>1</answer> TAGS. /no_think"""
+
+JUDGE_PROMPT_TEMPLATE_MMLU_CONT = """
+You are a strict grader. 
+Your job: rate how well the RESPONSE matches the GROUND TRUTH for the QUESTION.
+
+Output a number between 0.0 and 1.0:
+- 1.0 = fully correct (matches or is more specific, not contradictory)
+- 0.0 = contradicts or gives a different answer
+- 0.6–0.9 = close paraphrase, no contradictions
+- 0.1–0.5 = partially related, missing key info, or hedging
+- Numbers must be within 1% relative error for numeric questions.
+
+ALWAYS output only the score wrapped in <answer> tags. DO NOT output "You are a helpful assistant."
+
+Now grade this:
+QUESTION: "{question}"
+GROUND TRUTH: "{reference}"
+RESPONSE: "{answer}"
+"""
