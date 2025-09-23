@@ -3,9 +3,7 @@
 # One row per CSV (each dataset/run reported separately).
 #
 # Usage:
-#   python gpqa_continuous_metrics.py \
-#     --base-dir answer-matching/scores/gpqa_cont \
-#     --out answer-matching/scores/gpqa_cont/gpqa_summary_continuous.csv
+#   python gpqa_continuous_metrics.py --base-dir scores/gpqa_cont --out scores/gpqa_cont/gpqa_summary_continuous.csv
 
 import argparse
 from pathlib import Path
@@ -87,7 +85,9 @@ def parse_meta_from_path(path: Path):
     return model, split, attack_variant
 
 def discover_csvs(base_dir: Path) -> pd.DataFrame:
-    files = list(base_dir.rglob("*__continuous_scores.csv"))
+    files = list(base_dir.rglob("*.csv"))
+    print(f"Discovered {len(files)} CSV files under {base_dir}")
+
     entries = []
     for p in files:
         model, split, attack_variant = parse_meta_from_path(p)
