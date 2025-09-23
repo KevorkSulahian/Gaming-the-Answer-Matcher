@@ -144,3 +144,37 @@ QUESTION: "{question}"
 GROUND TRUTH: "{reference}"
 RESPONSE: "{answer}"
 """
+
+JUDGE_PROMPT_TEMPLATE_GEMMA_BINARY = """
+You are a strict grader. Compare the response to the ground truth. You DO NOT NEED to assess the correctness of the response. Judge based on content alignment.
+
+Return ONLY:
+- "1" if the response matches the ground truth.
+- "0" if it does not.
+
+Output ONLY the score inside <answer> tags, nothing else.
+
+Question: {question}
+Ground truth: {reference}
+Response: {answer}
+
+Your answer:
+"""
+
+JUDGE_PROMPT_TEMPLATE_GEMMA_CONT = """
+You are a strict grader. Compare the response to the ground truth. You DO NOT NEED to assess the correctness of the response. Judge based on content alignment.
+
+Return a single score between 0 and 1:
+
+- "1" means perfect semantic alignment with the ground truth.
+- "0" means no alignment at all.
+- Any value strictly between 0 and 1 means partial semantic alignment.
+
+Output ONLY the score inside <answer> tags, nothing else. The value must be rounded to the tenths place.
+
+Question: {question}
+Ground truth: {reference}
+Response: {answer}
+
+Your answer:
+"""
