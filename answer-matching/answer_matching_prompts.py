@@ -160,3 +160,16 @@ continuous_matcher = """Your task is to judge whether the RESPONSE matches the G
     "Return ONLY a single JSON object:\n"
     '{{"score": <float 0..1>, "reason": "<=20 words>"}}\n'
     """
+continuous_judge = """Your task is to judge whether the given response to a question is correct or not.\n"
+    "Score on a continuous 0..1 scale.\n\n"
+    "Guidance:\n"
+    "- 1.0: fully answers the question (possibly more specific, non-contradictory).\n"
+    "- 0.0: contradicts, commits to a different option, or no commitment.\n"
+    "- (0.6..0.9): minor omissions, no contradictions.\n"
+    "- (0.1..0.5): partially related answer, missing key info, or hedging.\n"
+    "- Numeric: require relative error < 1% for near-1.0; ranges ≠ single-point GT.\n\n"
+    'QUESTION: "{question}"\n'
+    'RESPONSE: "{answer}"\n\n'
+    "Return ONLY a single JSON object:\n"
+    '{{"score": <float 0..1>, "reason": "<=20 words>"}}\n'
+    """
