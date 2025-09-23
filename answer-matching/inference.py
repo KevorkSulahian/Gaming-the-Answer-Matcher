@@ -1,4 +1,12 @@
 import os
+
+HF_CACHE = "/workspace/hf_cache"
+os.environ["HF_HOME"] = HF_CACHE
+os.environ["HF_HUB_CACHE"] = HF_CACHE
+os.environ["TRANSFORMERS_CACHE"] = HF_CACHE
+os.environ["HF_DATASETS_CACHE"] = HF_CACHE  # optional, for datasets
+os.makedirs(HF_CACHE, exist_ok=True)
+
 import json
 import re
 import pandas as pd
@@ -16,14 +24,17 @@ class HFInference:
     def __init__(self, model_name, device_map='auto'):
         print(f"Loading model {model_name}...")
         self.model_name = model_name
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, 
+                                                       trust_remote_code=True,
+                                                       use_auth_token=True)
         gc.collect()
         torch.cuda.empty_cache()
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.float16,
             device_map={"": device_map} if isinstance(device_map, str) and device_map.startswith("cuda") else device_map,
-            trust_remote_code=True
+            trust_remote_code=True,
+            use_auth_token=True
         )
         print(f"Model {model_name} loaded on device: {self.model.device}")
 

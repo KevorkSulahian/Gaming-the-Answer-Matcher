@@ -1,6 +1,14 @@
 import answer_matching_prompts
-from inference import HFInference
 import os
+
+HF_CACHE = "/workspace/hf_cache"
+os.environ["HF_HOME"] = HF_CACHE
+os.environ["HF_HUB_CACHE"] = HF_CACHE
+os.environ["TRANSFORMERS_CACHE"] = HF_CACHE
+os.environ["HF_DATASETS_CACHE"] = HF_CACHE  # optional, for datasets
+os.makedirs(HF_CACHE, exist_ok=True)
+
+from inference import HFInference
 import json
 import re
 import ast
@@ -17,10 +25,7 @@ from typing import Optional
 from answer_matching_prompts import JUDGE_PROMPT_TEMPLATE_MMLU, JUDGE_PROMPT_TEMPLATE_MMLU_CONT
 import random
 
-HF_CACHE_DIR = "/workspace/Gaming-the-Answer-Matcher/hf_cache"
-os.environ["HF_HOME"] = HF_CACHE_DIR
-os.environ["TRANSFORMERS_CACHE"] = HF_CACHE_DIR
-os.environ["HF_HUB_CACHE"] = HF_CACHE_DIR
+# Ensure directory exists
 
 def answer_match(
     responses_df,
@@ -45,8 +50,8 @@ def answer_match(
 
     # init inference backend
     if "qwen" in model.lower():
-        mod_inference = HFInference(f"Qwen/{model}")
-        # mod_inference = HFInference("/workspace/hf_cache/models--Qwen--Qwen2.5-7B/snapshots/d149729398750b98c0af14eb82c78cfe92750796")
+        # mod_inference = HFInference(f"Qwen/{model}")
+        mod_inference = HFInference("hf_cache/models--Qwen--Qwen3-4B/snapshots/1cfa9a7208912126459214e8b04321603b3df60c")
     else:
         mod_inference = HFInference(model)
 
@@ -149,14 +154,14 @@ def main():
         answer_df = base_data,
         model = "Qwen3-4B",
         response_type = "verbose",
-        q_type = "qual",
+        q_type = "qual_binary",
         user_prompt = JUDGE_PROMPT_TEMPLATE_MMLU,
         system_prompt = None,
         temperature = 0.0,
         max_new_tokens = 256,
         batch_size = 10
     )
-    matched_df.to_csv("gpt_mmlu_pro_verbose_qual_test_Qwen3-4B_judge.csv")
+    matched_df.to_csv("gpt_mmlu_pro_verbose_qual_binary_test_Qwen3-4B_judge.csv")
     
 if __name__ == "__main__":
     main()
