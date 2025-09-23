@@ -229,7 +229,7 @@ class HFInference:
             content = self.tokenizer.decode(output_ids, skip_special_tokens=True)
             res = self.extract_answer_tags(content)
             resp_len = len(res)
-            try_i += 0
+            try_i += 1
 
         record['score'] = res
         print(record['score'])
@@ -525,9 +525,27 @@ def regenerate(path, num_tries, user_prompt_template, model_name, max_new_tokens
 # for p in paths:
 #     regenerate(p, 3, user_prompt_template, "Qwen3-4B")
 
-def get_resp_df(q_df, a_df):
-    resp = q_df[['question', 'reference', 'question_mcq']].merge(a_df, on='question')
-    resp = resp[['question', 'reference', 'answer']]
+def extract_reference(row):
+    try:
+        # split on the second character of options string
+        options_list = [
+            opt.strip() 
+            for opt in row["options"].split(row["options"][1]) 
+            if opt.strip() and opt.strip() not in ['[', ']']
+        ]
+        return options_list[int(row["answer_index"])]
+    except (IndexError, ValueError, TypeError):
+        # fallback for invalid rows
+        return None
+
+def get_resp_df(q_df, a_df, bench):
+    if bench == "gpqa":
+        resp = q_df[['question', 'reference', 'question_mcq']].merge(a_df, on='question')
+        resp = resp[['question', 'reference', 'answer']]
+    if bench == "mmlu":
+        q_df["reference"] = q_df.apply(extract_reference, axis=1)
+        resp = q_df[['question', 'reference']].merge(a_df, on='question')
+        resp = resp[['question', 'reference', 'answer']]
     return resp
 
 
@@ -622,9 +640,9 @@ def main():
 
     #judge--match
     qwen_responses = pd.read_csv(args.qual_ans)
-    qual_responses_qwen = get_resp_df(qual, qwen_responses)
+    qual_responses_qwen = get_resp_df(qual, qwen_responses, "gpqa")
     qwen_responses = pd.read_csv(args.quant_ans)
-    quant_responses_qwen = get_resp_df(quant, qwen_responses)
+    quant_responses_qwen = get_resp_df(quant, qwen_responses, "gpqa")
 
     print(f"Judging {args.qual_ans}")
     qwen_qual_am_df = run_inference(responses_df=qual_responses_qwen.to_dict(orient="records"),

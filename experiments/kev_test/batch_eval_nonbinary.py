@@ -39,12 +39,19 @@ def discover_csvs():
     return sorted(ANS_GEN.rglob("*.csv"))
 
 def should_skip(csv: Path) -> bool:
-    """Skip unwanted CSVs"""
     if "gpqa_surface_gaming_1" in str(csv):
         return True
     if csv.parent.name == "baseline" and "mcq" in csv.name.lower():
         return True
     return False
+
+def infer_split_from_path(path: Path) -> str:
+    s = f"{path.name.lower()} {path.parent.name.lower()}"
+    if "quant" in s:
+        return "quant"
+    if "qual" in s:
+        return "qual"
+    return "qual"
 
 REQUIRED_COLS = {"judge","question","reference","response","score","reason"}
 
@@ -53,20 +60,19 @@ def is_valid_scores_csv(path: Path) -> bool:
     try:
         if not path.exists():
             return False
-        # quick zero/near-zero file check
-        if path.stat().st_size < 64:  # header-only or empty
+        if path.stat().st_size < 64:
             return False
         df = pd.read_csv(path)
         if df.empty:
             return False
-        if not REQUIRED_COLS.issubset(set(map(str.lower, df.columns))):
-            # handle case-insensitive column names
-            df.columns = [c.lower() for c in df.columns]
-            if not REQUIRED_COLS.issubset(df.columns):
-                return False
-        # at least one non-NaN score
-        if "score" in df.columns and not df["score"].notna().any():
+        # case-insensitive column check
+        cols_lower = [c.lower() for c in df.columns]
+        if not REQUIRED_COLS.issubset(set(cols_lower)):
             return False
+        if "score" in cols_lower:
+            score_col = df.columns[cols_lower.index("score")]
+            if not df[score_col].notna().any():
+                return False
         return True
     except Exception:
         return False
@@ -74,48 +80,39 @@ def is_valid_scores_csv(path: Path) -> bool:
 # -------------------- main --------------------
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview which files will run, skip execution"
-    )
-    # allow forcing split from the batch script
-    ap.add_argument(
-        "--split",
-        choices=["qual","quant"],
-        default="quant",
-        help="Force split passed to eval_nonbinary.py (default: quant)"
-    )
+    ap.add_argument("--dry-run", action="store_true", help="Preview which files will run, skip execution")
     args = ap.parse_args()
 
     skipped_existing = []
     skipped_manual = []
     rebuilt_bad = []
-    to_run = []
+    to_run = []  # (csv, split, out_csv)
 
     for csv in discover_csvs():
         if should_skip(csv):
             skipped_manual.append(csv)
             continue
 
+        split = infer_split_from_path(csv)  # decide per file
         folder_name = csv.parent.name
         out_dir = SCORES_ROOT / folder_name
         out_dir.mkdir(parents=True, exist_ok=True)
-        out_csv = out_dir / f"{csv.stem}__continuous_scores.csv"
+
+        # include split in filename to avoid qual/quant clobbering
+        out_csv = out_dir / f"{csv.stem}__{split}__continuous_scores.csv"
 
         if out_csv.exists():
             if is_valid_scores_csv(out_csv):
                 skipped_existing.append(out_csv)
                 continue
             else:
-                # invalid/empty -> remove and schedule rebuild
                 try:
                     out_csv.unlink()
                 except Exception:
                     pass
                 rebuilt_bad.append(out_csv)
 
-        to_run.append((csv, out_csv))
+        to_run.append((csv, split, out_csv))
 
     # ----------- summary -----------
     print("\n=== SUMMARY ===")
@@ -132,21 +129,25 @@ def main():
         print(f"  [rebuild] {s}")
 
     print("\nTo run (will generate):")
-    for inp, out in to_run:
-        print(f"  [run] {inp} -> {out}")
+    for inp, split, out in to_run:
+        print(f"  [run] {inp} --split {split} -> {out}")
     print("================\n")
 
     if args.dry_run:
         print("Dry-run mode: no eval_nonbinary.py calls made.")
         return
 
+    if not to_run:
+        print("Nothing to do.")
+        return
+
     # ----------- run loop -----------
     total = len(to_run)
-    for i, (inp, out) in enumerate(to_run, 1):
-        print(f"[{i}/{total}] Running: {inp} -> {out}  (forcing --split {args.split})")
+    for i, (inp, split, out) in enumerate(to_run, 1):
+        print(f"[{i}/{total}] Running: {inp} -> {out}  (--split {split})")
         start = time.time()
         ss.run(
-            ["python", str(EVAL_SCRIPT), str(inp), "--split", args.split],
+            ["python", str(EVAL_SCRIPT), str(inp), "--split", split],
             check=True
         )
         elapsed = time.time() - start

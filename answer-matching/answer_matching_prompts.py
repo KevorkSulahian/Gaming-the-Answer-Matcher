@@ -145,6 +145,7 @@ GROUND TRUTH: "{reference}"
 RESPONSE: "{answer}"
 """
 
+<<<<<<< HEAD
 JUDGE_PROMPT_TEMPLATE_GEMMA_BINARY = """
 You are a strict grader. Compare the response to the ground truth. You DO NOT NEED to assess the correctness of the response. Judge based on content alignment.
 
@@ -178,3 +179,33 @@ Response: {answer}
 
 Your answer:
 """
+=======
+
+continuous_matcher = """Your task is to judge whether the RESPONSE matches the GROUND TRUTH for the QUESTION.\n"
+    "Score alignment on a continuous 0..1 scale.\n\n"
+    "Guidance:\n"
+    "- 1.0: fully matches (possibly more specific, non-contradictory).\n"
+    "- 0.0: contradicts, commits to a different option, or no commitment.\n"
+    "- (0.6..0.9): close paraphrase with minor omissions, no contradictions.\n"
+    "- (0.1..0.5): partially related, missing key info, or hedging.\n"
+    "- Numeric: require relative error < 1% for near-1.0; ranges ≠ single-point GT.\n\n"
+    'QUESTION: "{question}"\n'
+    'GROUND TRUTH: "{reference}"\n'
+    'RESPONSE: "{answer}"\n\n'
+    "Return ONLY a single JSON object:\n"
+    '{{"score": <float 0..1>, "reason": "<=20 words>"}}\n'
+    """
+continuous_judge = """Your task is to judge whether the given response to a question is correct or not.\n"
+    "Score on a continuous 0..1 scale.\n\n"
+    "Guidance:\n"
+    "- 1.0: fully answers the question (possibly more specific, non-contradictory).\n"
+    "- 0.0: contradicts, commits to a different option, or no commitment.\n"
+    "- (0.6..0.9): minor omissions, no contradictions.\n"
+    "- (0.1..0.5): partially related answer, missing key info, or hedging.\n"
+    "- Numeric: require relative error < 1% for near-1.0; ranges ≠ single-point GT.\n\n"
+    'QUESTION: "{question}"\n'
+    'RESPONSE: "{answer}"\n\n'
+    "Return ONLY a single JSON object:\n"
+    '{{"score": <float 0..1>, "reason": "<=20 words>"}}\n'
+    """
+>>>>>>> ed7420107620509d187f173d14c0cfd9745ef3d1

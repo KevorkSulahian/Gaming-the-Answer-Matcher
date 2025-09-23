@@ -41,7 +41,7 @@ DATASET_DIR = REPO / "datasets" / "gpqa"
 SCORES_ROOT = REPO / "answer-matching" / "scores" / "gpqa_cont"
 
 # judge model id (used by HFInference)
-JUDGE_MODEL = "meta-llama/Meta-Llama-3-8B-Instruct"
+JUDGE_MODEL = "Qwen/Qwen3-4B"
 QUESTION_CONTEXT = None
 TEMPERATURE = 0.01
 MAX_NEW_TOKENS = 128
@@ -63,6 +63,13 @@ Rules for scores:
 - Ignore style/verbosity; judge content only.
 - Think silently; output JSON ONLY.
 """
+SYSTEM_PROMPT = (
+    "/no_think You are a STRICT JSON judge.\n"
+    "Output exactly ONE JSON object and NOTHING else.\n"
+    "Do NOT include <think>, analysis, explanations, markdown, code fences, or any text outside JSON.\n"
+    "Begin with '{' and end with '}'."
+)
+
 
 def _ctx(question: Optional[str], context: Optional[str]) -> str:
     lines = []
@@ -91,19 +98,61 @@ USER_PROMPT_TEMPLATE = (
 
 
 # ------------------------- Robust JSON parser -------------------------
-_JSON_BLOCK = re.compile(r"\{.*\}", re.DOTALL)
+def _extract_first_json_obj(text: str) -> Optional[str]:
+    """Return the first top-level {...} block (balanced braces), or None."""
+    if not text:
+        return None
+    t = str(text).strip()
+    # Strip common wrappers (```json ... ```)
+    if t.startswith("```"):
+        # remove *outer* code fences while keeping inner content
+        lines = [ln for ln in t.splitlines() if not ln.strip().startswith("```")]
+        t = "\n".join(lines).strip()
+
+    start = t.find("{")
+    if start == -1:
+        return None
+
+    depth = 0
+    i = start
+    in_str = False
+    esc = False
+    while i < len(t):
+        ch = t[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+        else:
+            if ch == '"':
+                in_str = True
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    return t[start:i+1]
+        i += 1
+    return None  # no balanced object found
+
 def parse_continuous_json(text: str) -> Tuple[Optional[float], Optional[str], Dict[str, Any]]:
     try:
-        m = _JSON_BLOCK.search(text or "")
-        if not m:
+        j = _extract_first_json_obj(text)
+        if not j:
             return None, None, {}
-        obj = json.loads(m.group(0))
-        if "score" in obj:
-            s = max(0.0, min(1.0, float(obj["score"])))
-            return s, str(obj.get("reason", "")), obj
-        return None, None, obj
+        obj = json.loads(j)
+        s = obj.get("score", None)
+        r = obj.get("reason", None)
+        if s is None or r is None:
+            return None, None, obj
+        s = max(0.0, min(1.0, float(s)))
+        return s, str(r), obj
     except Exception:
         return None, None, {}
+
 
 # ------------------------- Data helpers -------------------------
 def get_resp_df(q_df: pd.DataFrame, a_df: pd.DataFrame) -> pd.DataFrame:
@@ -185,18 +234,39 @@ def process_responses(records: List[Dict[str, Any]], cache_prefix: str, bar_desc
     pbar = tqdm(total=len(records), desc=bar_desc, unit="resp")
     for i in range(0, len(records), BATCH_SIZE):
         batch = [dict(rec) for rec in records[i:i+BATCH_SIZE]]
+        # print(batch)
+        # print("--------------------------------------------------------------------------------")
+        # print(cache_file)
+        # print("--------------------------------------------------------------------------------")
+        # print(cache)
+        # print("--------------------------------------------------------------------------------")
         cache = mod.generate_batch(
             batch, cache, cache_file,
             user_prompt=USER_PROMPT_TEMPLATE,
-            system_prompt=None,
+            system_prompt=SYSTEM_PROMPT,
             temperature=TEMPERATURE,
             max_new_tokens=MAX_NEW_TOKENS
         )
         for rec in batch:
             cache_key = f"{mod.model_name}::{rec['question']}"
+            # print(rec)
             entry = cache.get(cache_key, {})
             raw_text = entry.get("text") or entry.get("completion") or entry.get("score") or ""
             score, reason, _ = parse_continuous_json(raw_text)
+            # after retry parse
+            if score is None or reason is None or not str(reason).strip():
+                debug_ctx = {
+                    "cache_key": cache_key,
+                    "question": (rec.get("question") or "")[:300],
+                    "reference": (rec.get("reference") or "")[:300],
+                    "response": (rec.get("answer") or "")[:300],
+                    "raw_text": (raw_text or "")[:1000],
+                }
+                raise RuntimeError(
+                    "Judge returned invalid JSON after retry. "
+                    f"Context:\n{json.dumps(debug_ctx, ensure_ascii=False, indent=2)}"
+                )
+
             results.append({
                 "judge": JUDGE_MODEL,
                 "question": rec["question"],
@@ -219,6 +289,11 @@ def process_responses(records: List[Dict[str, Any]], cache_prefix: str, bar_desc
         torch.cuda.empty_cache()
     except Exception:
         pass
+
+
+    if df["score"].isna().any() or (df["reason"].astype(str).str.strip() == "").any():
+        bad = df[df["score"].isna() | (df["reason"].astype(str).str.strip() == "")]
+        raise RuntimeError("Post-run validation failed; some rows missing score/reason:\n" + bad.head(10).to_string(index=False))
 
     return df
 
@@ -280,7 +355,9 @@ def main():
 
     out_dir = SCORES_ROOT / folder_name
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_csv = out_dir / f"{csv.stem}__continuous_scores.csv"
+
+    # *** include split in filename ***
+    out_csv = out_dir / f"{csv.stem}__{split_used}__continuous_scores.csv"
 
     if out_csv.exists():
         print(f"✓ already exists, skipping: {out_csv}")
