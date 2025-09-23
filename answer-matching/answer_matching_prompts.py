@@ -144,3 +144,19 @@ QUESTION: "{question}"
 GROUND TRUTH: "{reference}"
 RESPONSE: "{answer}"
 """
+
+
+continuous_matcher = """Your task is to judge whether the RESPONSE matches the GROUND TRUTH for the QUESTION.\n"
+    "Score alignment on a continuous 0..1 scale.\n\n"
+    "Guidance:\n"
+    "- 1.0: fully matches (possibly more specific, non-contradictory).\n"
+    "- 0.0: contradicts, commits to a different option, or no commitment.\n"
+    "- (0.6..0.9): close paraphrase with minor omissions, no contradictions.\n"
+    "- (0.1..0.5): partially related, missing key info, or hedging.\n"
+    "- Numeric: require relative error < 1% for near-1.0; ranges ≠ single-point GT.\n\n"
+    'QUESTION: "{question}"\n'
+    'GROUND TRUTH: "{reference}"\n'
+    'RESPONSE: "{answer}"\n\n'
+    "Return ONLY a single JSON object:\n"
+    '{{"score": <float 0..1>, "reason": "<=20 words>"}}\n'
+    """
