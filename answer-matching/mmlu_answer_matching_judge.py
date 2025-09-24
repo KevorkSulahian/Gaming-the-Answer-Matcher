@@ -51,8 +51,8 @@ def answer_match(
 
     # init inference backend
     if "qwen" in model.lower():
-        # mod_inference = HFInference(f"Qwen/{model}")
-        mod_inference = HFInference("hf_cache/models--Qwen--Qwen3-4B/snapshots/1cfa9a7208912126459214e8b04321603b3df60c")
+        mod_inference = HFInference(f"Qwen/{model}")
+        # mod_inference = HFInference("hf_cache/models--Qwen--Qwen3-4B/snapshots/1cfa9a7208912126459214e8b04321603b3df60c")
     elif "google" in model.lower():
         mod_inference = HFInference("google/gemma-2-2b-it")
     else:
@@ -85,6 +85,8 @@ def answer_match(
         for record in answer_records[start:end]:
             question = record["question"]
             # merge with model responses for this question
+            # response_row = responses_df[responses_df["question"] == question].to_dict()
+            # print(response_row)
             response_row = next((r for r in responses_records if r["question"] == question), {})
             options_list = [opt.strip() for opt in record["options"].split(record["options"][1]) if opt.strip() and opt.strip() not in ['[', ']']]
             try:
@@ -96,7 +98,7 @@ def answer_match(
             record_data = {
                 "question": question,
                 "reference": options_list[int(record["answer_index"])],
-                "answer": response_row.get("answer", "")
+                "answer": response_row.get("answer_y", "")
             }
             batch.append(record_data)
 
@@ -150,22 +152,22 @@ def answer_match(
 
 def main():
     device = torch.device("cuda")
-    answers_df = pd.read_csv("answer-generation/mmlu/mmlu-verbose/gpt_mmlu_pro_verbose_quant_test_answers_sample_large.csv")
-    base_data = pd.read_csv("datasets/mmlu/mmlu_pro_quantitative_test_sample_large.csv")
+    answers_df = pd.read_csv("answer-generation/mmlu/mmlu-baseline/qwen_mmlu_pro_baseline_qual_answers_final_sample.csv")
+    base_data = pd.read_csv("datasets/mmlu/mmlu_pro_qualitative_final_sample.csv")
 
     matched_df = answer_match(
         responses_df = answers_df,
         answer_df = base_data,
-        model = "google-gemma-2-2b-it",
-        response_type = "verbose",
-        q_type = "quant_cont",
-        user_prompt = JUDGE_PROMPT_TEMPLATE_GEMMA_CONT,
-        system_prompt = None,
+        model = "Qwen3-4B",
+        response_type = "baseline",
+        q_type = "qual_binary",
+        user_prompt = JUDGE_PROMPT_TEMPLATE_MMLU,
+        system_prompt = "",
         temperature = 0.0,
-        max_new_tokens = 256,
+        max_new_tokens = 200,
         batch_size = 10
     )
-    matched_df.to_csv("gpt_mmlu_pro_verbose_quant_cont_test_Gemma-2-2B-IT_judge.csv")
+    matched_df.to_csv("qwen_mmlu_pro_baseline_qual_binary_Qwen3-4B_judge.csv")
     
 if __name__ == "__main__":
     main()
