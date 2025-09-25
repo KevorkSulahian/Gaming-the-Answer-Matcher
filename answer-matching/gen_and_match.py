@@ -605,22 +605,45 @@ def main():
     args.exp = "baseline"
     args.max_sample_size = 5000000 #whole dataset
 
-    # args.qual_gen_op = "qwen_qual_verbose_answers.csv"
-    # args.quant_gen_op = "qwen_quant_verbose_answers.csv"
-    # args.qual_ans = "qwen_qual_verbose_answers.csv"
-    # args.quant_ans = "qwen_quant_verbose_answers.csv"
+    args.qual_ans = [
+                "gen/qwen_qual_baseline_answers.csv", 
+                 "gen/gpt_qual_baseline_answers.csv", 
+                "gen/qwen_qual_verbose_answers.csv", 
+                 "gen/gpt_qual_verbose_answers.csv", 
+                    "gen/qwen_qual_strategic_answers.csv", "gen/gpt_qual_strategic_answers.csv",
+                   "gen/qwen_qual_forward_answers.csv", "gen/gpt_qual_forward_answers.csv"
+                ]
 
-    # args.qual_match_op = "qwen_qual_verbose_matches.csv"
-    # args.quant_match_op = "qwen_quant_verbose_matches.csv"
+    args.quant_ans = [
+                "gen/qwen_quant_baseline_answers.csv", 
+                 "gen/gpt_quant_baseline_answers.csv", 
+                  "gen/qwen_quant_verbose_answers.csv", "gen/gpt_quant_verbose_answers.csv", 
+                    "gen/qwen_quant_strategic_answers.csv", "gen/gpt_quant_strategic_answers.csv",
+                   "gen/qwen_quant_forward_answers.csv", "gen/gpt_quant_forward_answers.csv"
+                 ]
+    args.qual_match_op = [
+                    "scores/judge/gemma/qwen_qual_baseline_scores.csv", 
+                    "scores/judge/gemma/gpt_qual_baseline_scores.csv",
+                    "scores/judge/gemma/qwen_qual_verbose_scores.csv", "scores/judge/gemma/gpt_qual_verbose_scores.csv",
+                     "scores/judge/gemma/qwen_qual_strategic_scores.csv", "scores/judge/gemma/gpt_qual_strategic_scores.csv",
+                     "scores/judge/gemma/qwen_qual_forward_scores.csv", "scores/judge/gemma/gpt_qual_forward_scores.csv"
+                     ]
+
+    args.quant_match_op = [
+                    "scores/judge/gemma/qwen_quant_baseline_scores.csv", "scores/judge/gemma/gpt_quant_baseline_scores.csv",
+                    "scores/judge/gemma/qwen_quant_verbose_scores.csv", "scores/judge/gemma/gpt_quant_verbose_scores.csv",
+                     "scores/judge/gemma/qwen_quant_strategic_scores.csv", "scores/judge/gemma/gpt_quant_strategic_scores.csv",
+                     "scores/judge/gemma/qwen_quant_forward_scores.csv", "scores/judge/gemma/gpt_quant_forward_scores.csv"
+                      ]
 
 
-    args.qual_gen_op = f"gpqa/{args.exp}/qwen_qual_baseline_answers.csv"
-    args.quant_gen_op = f"gpqa/{args.exp}/qwen_qual_baseline_answers.csv"
-    args.qual_ans = f"gpqa/{args.exp}/qwen_qual_baseline_answers.csv"
-    args.quant_ans = f"gpqa/{args.exp}/qwen_quant_baseline_answers.csv"
+    # args.qual_gen_op = f"gpqa/{args.exp}/qwen_qual_baseline_answers.csv"
+    # args.quant_gen_op = f"gpqa/{args.exp}/qwen_qual_baseline_answers.csv"
+    # args.qual_ans = f"gpqa/{args.exp}/qwen_qual_baseline_answers.csv"
+    # args.quant_ans = f"gpqa/{args.exp}/qwen_quant_baseline_answers.csv"
 
-    args.qual_match_op = f"scores/gpqa/{args.exp}/{args.matcher_name}/qwen_qual_baseline_matches.csv"
-    args.quant_match_op = f"scores/gpqa/{args.exp}/{args.matcher_name}/qwen_quant_baseline_matches.csv"
+    # args.qual_match_op = f"scores/gpqa/{args.exp}/{args.matcher_name}/qwen_qual_baseline_matches.csv"
+    # args.quant_match_op = f"scores/gpqa/{args.exp}/{args.matcher_name}/qwen_quant_baseline_matches.csv"
 
     qual = pd.read_csv(args.base_qual_data)
     quant = pd.read_csv(args.base_quant_data)
@@ -639,38 +662,44 @@ def main():
 
 
     #judge--match
-    qwen_responses = pd.read_csv(args.qual_ans)
-    qual_responses_qwen = get_resp_df(qual, qwen_responses, "gpqa")
-    qwen_responses = pd.read_csv(args.quant_ans)
-    quant_responses_qwen = get_resp_df(quant, qwen_responses, "gpqa")
-
-    print(f"Judging {args.qual_ans}")
-    qwen_qual_am_df = run_inference(responses_df=qual_responses_qwen.to_dict(orient="records"),
-                                    model=args.matcher_name, 
-                                    cache={}, 
-                                    cache_name=args.cache_name, 
-                                    user_prompt=args.matcher_prompt, 
-                                    system_prompt=None,
-                                    temperature=args.temperature_matcher, 
-                                    max_new_tokens=args.max_new_tokens_matcher, 
-                                    split_data=args.model_split, 
-                                    split_model=args.data_split)
+    print(args.matcher_prompt)
+    for cache_name, qual_ans, quant_ans, qual_match_op, quant_match_op in zip(
+        args.cache_name, args.qual_ans, 
+        args.quant_ans, args.qual_match_op, 
+        args.quant_match_op):
         
-    qwen_qual_am_df.to_csv(args.qual_match_op, index=False)
-
-    print(f"Judging {args.quant_ans}")
-    qwen_quant_am_df = run_inference(responses_df=quant_responses_qwen.to_dict(orient="records"),
-                                    model=args.matcher_name, 
-                                    cache={}, 
-                                    cache_name=args.cache_name, 
-                                    user_prompt=args.matcher_prompt, 
-                                    system_prompt=None,
-                                    temperature=args.temperature_matcher, 
-                                    max_new_tokens=args.max_new_tokens_matcher, 
-                                    split_data=args.model_split, 
-                                    split_model=args.data_split)
+        qwen_responses = pd.read_csv(qual_ans)
+        qual_responses_qwen = get_resp_df(qual, qwen_responses, args.bench)
+        qwen_responses = pd.read_csv(quant_ans)
+        quant_responses_qwen = get_resp_df(quant, qwen_responses, args.bench)
         
-    qwen_quant_am_df.to_csv(args.quant_match_op, index=False)
+        print(f"Judging {qual_ans}")
+        qwen_qual_am_df = run_inference(responses_df=qual_responses_qwen.to_dict(orient="records"),
+                                        model=args.matcher_name, 
+                                        cache={}, 
+                                        cache_name=cache_name, 
+                                        user_prompt=args.matcher_prompt, 
+                                        system_prompt=None,
+                                        temperature=args.temperature_matcher, 
+                                        max_new_tokens=args.max_new_tokens_matcher, 
+                                        split_data=args.model_split, 
+                                        split_model=args.data_split)
+            
+        qwen_qual_am_df.to_csv(qual_match_op, index=False)
+        
+        print(f"Judging {quant_ans}")
+        qwen_quant_am_df = run_inference(responses_df=quant_responses_qwen.to_dict(orient="records"),
+                                        model=args.matcher_name, 
+                                        cache={}, 
+                                        cache_name=cache_name, 
+                                        user_prompt=args.matcher_prompt, 
+                                        system_prompt=None,
+                                        temperature=args.temperature_matcher, 
+                                        max_new_tokens=args.max_new_tokens_matcher, 
+                                        split_data=args.model_split, 
+                                        split_model=args.data_split)
+            
+        qwen_quant_am_df.to_csv(quant_match_op, index=False)
     
 if __name__ == "__main__":
     main()
