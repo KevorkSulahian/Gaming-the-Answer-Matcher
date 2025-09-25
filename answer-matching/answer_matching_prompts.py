@@ -145,7 +145,6 @@ GROUND TRUTH: "{reference}"
 RESPONSE: "{answer}"
 """
 
-<<<<<<< HEAD
 JUDGE_PROMPT_TEMPLATE_GEMMA_BINARY = """
 You are a strict grader. Compare the response to the ground truth. You DO NOT NEED to assess the correctness of the response. Judge based on content alignment.
 
@@ -179,7 +178,6 @@ Response: {answer}
 
 Your answer:
 """
-=======
 
 continuous_matcher = """Your task is to judge whether the RESPONSE matches the GROUND TRUTH for the QUESTION.\n"
     "Score alignment on a continuous 0..1 scale.\n\n"
@@ -208,4 +206,3 @@ continuous_judge = """Your task is to judge whether the given response to a ques
     "Return ONLY a single JSON object:\n"
     '{{"score": <float 0..1>, "reason": "<=20 words>"}}\n'
     """
->>>>>>> ed7420107620509d187f173d14c0cfd9745ef3d1
