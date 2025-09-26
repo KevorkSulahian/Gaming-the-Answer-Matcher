@@ -599,7 +599,14 @@ def main():
     args.matcher_name = "Qwen3-4B"
     args.testee_prompt = answer_matching_prompts.BASELINE_PROMPT
     args.matcher_prompt = user_prompt_template
-    args.cache_name = "qwen7b"
+    args.cache_name = [
+                  "baseqwenmatch", "basegptmatch", 
+                  "vbqwenmatch", "vbgptmatch", 
+                  #  "stratqwenmatch", 
+                   "stratgptmatch", 
+                  #  "fwdqwenmatch", 
+                   "fwdgptmatch"
+                   ]
     args.model_split = False
     args.data_split = True
     args.exp = "baseline"
