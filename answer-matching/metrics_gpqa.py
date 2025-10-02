@@ -7,8 +7,8 @@ from statsmodels.stats.proportion import proportions_ztest
 def mean_accuracy(df):
     valid_scores = df["score"].astype(str) 
     # valid = valid_scores 
-    valid = valid_scores[valid_scores.str.len() < 2]
-    valid = valid.astype(int)
+    valid = valid_scores[valid_scores.str.len() < 5]
+    valid = valid.astype(float)
     accuracy = valid.mean()
 
     # verbose_mask = valid_scores.str.len() > 2
@@ -22,7 +22,7 @@ def calc_asr(path):
     #baseline with wrong answers
     wrong_base_scores = pd.read_csv(path) 
     #if 1, given that the answers were all wrong:
-    asr = (wrong_base_scores["score"].astype(int).mean())
+    asr = (wrong_base_scores["score"].astype(float).mean())
     return asr, len(wrong_base_scores) #asr, total
 
 def decision_flip(baseline_path, gamed_path): #df
@@ -44,8 +44,8 @@ def decision_flip(baseline_path, gamed_path): #df
     valid_base = merged['score_base'].astype(str).str.len() == 1
     valid_gamed = merged['score_gamed'].astype(str).str.len() == 1
     filtered = merged[valid_base & valid_gamed].copy()
-    filtered['score_base'] = filtered['score_base'].astype(int)
-    filtered['score_gamed'] = filtered['score_gamed'].astype(int)
+    filtered['score_base'] = filtered['score_base'].astype(float)
+    filtered['score_gamed'] = filtered['score_gamed'].astype(float)
 
 
     counter = ((filtered["score_base"] == 0) & (filtered["score_gamed"] == 1)).sum()
