@@ -1,28 +1,26 @@
 import pandas as pd
 import math
 import numpy as np
-from statsmodels.stats.proportion import proportions_ztest
-
+import matplotlib.pyplot as plt
 
 def mean_accuracy(df):
-    valid_scores = df["score"].astype(str) 
-    # valid = valid_scores 
-    valid = valid_scores[valid_scores.str.len() < 2]
-    valid = valid.astype(int)
-    accuracy = valid.mean()
+    # Convert to numeric, non-numeric becomes NaN
+    numeric_scores = pd.to_numeric(df["score"], errors="coerce")
 
-    # verbose_mask = valid_scores.str.len() > 2
-    # verbose = df.loc[verbose_mask, "question"] 
-    #returns questions that the model didnt reliably score
+    # Drop NaNs
+    numeric_scores = numeric_scores.dropna()
 
-    # return accuracy, valid, verbose
-    return accuracy, len(valid)
+    # Optional: keep only "reasonable" values, e.g. 0 <= score <= 1
+    numeric_scores = numeric_scores[(numeric_scores >= 0) & (numeric_scores <= 1)]
+
+    accuracy = numeric_scores.mean()
+
+    return accuracy, len(numeric_scores)
 
 def calc_asr(path):
     #baseline with wrong answers
     wrong_base_scores = pd.read_csv(path) 
-    #if 1, given that the answers were all wrong:
-    asr = (wrong_base_scores["score"].astype(int).mean())
+    asr = (wrong_base_scores["score"].astype(float).mean())
     return asr, len(wrong_base_scores) #asr, total
 
 def decision_flip(baseline_path, gamed_path): #df
@@ -44,8 +42,8 @@ def decision_flip(baseline_path, gamed_path): #df
     valid_base = merged['score_base'].astype(str).str.len() == 1
     valid_gamed = merged['score_gamed'].astype(str).str.len() == 1
     filtered = merged[valid_base & valid_gamed].copy()
-    filtered['score_base'] = filtered['score_base'].astype(int)
-    filtered['score_gamed'] = filtered['score_gamed'].astype(int)
+    filtered['score_base'] = filtered['score_base'].astype(float)
+    filtered['score_gamed'] = filtered['score_gamed'].astype(float)
 
 
     counter = ((filtered["score_base"] == 0) & (filtered["score_gamed"] == 1)).sum()
@@ -100,55 +98,78 @@ def cohens(baseline_path, attack_path): # csv paths
     }
 
 
-
 def main():
-    #mean accuracy
-    df1 = pd.read_csv("answer-matching/scores/mmlu/forward/gpt_mmlu_pro_forward_qual_test_judge.csv")
-    acc1, num_samples = mean_accuracy(df1)
-    print(f"Accuracy Qwen Qual: {acc1}, Total Questions: {num_samples}")  
-    df2 = pd.read_csv("gpqa_scores/gpqa_diamond_quant_qwen_matches_baseline.csv")
-    acc2, num_samples = mean_accuracy(df2)
-    print(f"Accuracy Qwen Quant: {acc2}, Total Questions: {num_samples}")  
-    df3 = pd.read_csv("gpqa_scores/gpqa_diamond_qual_gpt_matches_baseline.csv")
-    acc3, num_samples = mean_accuracy(df3)
-    print(f"Accuracy GPT Qual: {acc3}, Total Questions: {num_samples}")  
-    df4 = pd.read_csv("gpqa_scores/gpqa_diamond_quant_gpt_matches_baseline.csv")
-    acc4, num_samples = mean_accuracy(df4)
-    print(f"Accuracy GPT Quant: {acc4}, Total Questions: {num_samples}")  
+    # Explicitly list all files by category + model
+    file_paths = {
+        "Baseline": {
+            "Qwen3": "answer-matching/scores/mmlu/baseline_quant/gpt_mmlu_pro_baseline_quant_qwen3_binary_matcher.csv",
+            "Qwen2.5": "answer-matching/scores/mmlu/baseline_quant/gpt_mmlu_pro_baseline_quant_qwen2.5_binary_matcher.csv",
+            "Gemma": "answer-matching/scores/mmlu/baseline_quant/gpt_mmlu_pro_baseline_quant_gemma_binary_matcher.csv",
+            "GPT":   "answer-matching/scores/mmlu/baseline_quant/gpt_mmlu_pro_baseline_quant_gpt_binary_matcher.csv",
+        },
+        "Forward": {
+            "Qwen3": "answer-matching/scores/mmlu/forward_quant/gpt_mmlu_pro_forward_quant_qwen3_binary_matcher.csv",
+            "Qwen2.5": "answer-matching/scores/mmlu/forward_quant/gpt_mmlu_pro_forward_quant_qwen2.5_binary_matcher.csv",
+            "Gemma": "answer-matching/scores/mmlu/forward_quant/gpt_mmlu_pro_forward_quant_gemma_binary_matcher.csv",
+            "GPT":   "answer-matching/scores/mmlu/forward_quant/gpt_mmlu_pro_forward_quant_gpt_binary_matcher.csv",
+        },
+        "Unsure": {
+            "Qwen3": "answer-matching/scores/mmlu/unsure_quant/gpt_mmlu_pro_unsure_quant_qwen3_binary_matcher.csv",
+            "Qwen2.5": "answer-matching/scores/mmlu/unsure_quant/gpt_mmlu_pro_unsure_quant_qwen2.5_binary_matcher.csv",
+            "Gemma": "answer-matching/scores/mmlu/unsure_quant/gpt_mmlu_pro_unsure_quant_gemma_binary_matcher.csv",
+            "GPT":   "answer-matching/scores/mmlu/unsure_quant/gpt_mmlu_pro_unsure_quant_gpt_binary_matcher.csv",
+        },
+        "Verbose": {
+            "Qwen3": "answer-matching/scores/mmlu/verbose_quant/gpt_mmlu_pro_verbose_quant_qwen3_binary_matcher.csv",
+            "Qwen2.5": "answer-matching/scores/mmlu/verbose_quant/gpt_mmlu_pro_verbose_quant_qwen2.5_binary_matcher.csv",
+            "Gemma": "answer-matching/scores/mmlu/verbose_quant/gpt_mmlu_pro_verbose_quant_gemma_binary_matcher.csv",
+            "GPT":   "answer-matching/scores/mmlu/verbose_quant/gpt_mmlu_pro_verbose_quant_gpt_binary_matcher.csv",
+        }
+    }
 
-    print(f"Total QWEN: {mean_accuracy(pd.concat([df1, df2], ignore_index=True))[0]}")  
-    print(f"Total GPT: {mean_accuracy(pd.concat([df3, df4], ignore_index=True))[0]}")  
+    data = []
+    for category, model_files in file_paths.items():
+        for model, path in model_files.items():
+            df = pd.read_csv(path)
+            acc, _ = mean_accuracy(df)
+            data.append((category, model, acc))
 
+    # Put results into a dataframe
+    plot_df = pd.DataFrame(data, columns=["Category", "Model", "Accuracy"])
 
-    # #ASR
-    # #baseline/control
-    # #GPQA
-    # base_qual = ""
-    # base_quant = ""
-    # base_asr_qual, total_base_qual = calc_asr(base_qual)
-    # print(f"Baseline ASR Qual: {base_asr_qual}, Total Questions: {total_base_qual}")
-    # base_asr_quant, total_base_quant = calc_asr(base_quant)
-    # print(f"Baseline ASR Quant: {base_asr_quant}, Total Questions: {total_base_quant}")
+    # --- Grouped bar chart ---
+    categories = list(file_paths.keys())
+    models = list(next(iter(file_paths.values())).keys())  # ["Qwen", "Gemma", "GPT"]
 
-    # #give matcher output csv paths for a gaming experiment
-    # gamed_qual = "" 
-    # gamed_quant = ""
-    # gamed_asr_qual, suc_qual, tot_g_qual = decision_flip(base_qual, gamed_qual)
-    # print(f"Gaming ASR Qual: {gamed_asr_qual}, Total Questions: {tot_g_qual}, Successes: {suc_qual} ")
-    # gamed_asr_quant, suc_quant, tot_g_quant = decision_flip(base_quant, gamed_quant)
-    # print(f"Gaming ASR Quant: {gamed_asr_quant}, Total Questions: {tot_g_quant}, Successes: {suc_quant} ")
+    group_width = 0.8   # width of each group (smaller = more space between groups)
+    bar_width = group_width / len(models)
+    x = np.arange(len(categories)) * (1 + 0.4)  # add 40% spacing between groups
+    
+    fig, ax = plt.subplots(figsize=(9, 5))
+    
+    for i, model in enumerate(models):
+        subset = plot_df[plot_df["Model"] == model]
+        # shift bars within each group
+        ax.bar(
+            x + (i - (len(models) - 1) / 2) * bar_width,
+            subset["Accuracy"],
+            bar_width,
+            label=model
+        )
+        for xi, acc in zip(x + (i - (len(models) - 1) / 2) * bar_width, subset["Accuracy"]):
+            ax.text(xi, acc + 0.01, f"{acc:.2f}", ha="center", va="bottom", fontsize=8)
 
-    # #Statistical Significance
-    # #Qual - Qwen
-    # significance(base_asr_qual*total_base_qual, total_base_qual, suc_qual, tot_g_qual)
-    # #Quant - Qwen
-    # significance(base_asr_quant*total_base_quant, total_base_quant, suc_quant, tot_g_quant)
+    ax.set_xticks(x)
+    ax.set_xticklabels(categories)
+    ax.set_xlabel("Attack Type")
+    ax.set_ylabel("Average Score")
+    ax.set_title("MMLU Pro Quant Binary Judging")
+    ax.legend()
 
-    # #Magnitude
-    # normal_base_qual = "scores/gpqa/baseline/gpqa_diamond_qual_qwen_matches_baseline_merged.csv"
-    # cohens(normal_base_qual, gamed_qual)
-    # normal_base_quant = "scores/gpqa/baseline/gpqa_diamond_quant_qwen_matches_baseline_merged.csv"
-    # cohens(normal_base_quant, gamed_quant)
+    plt.tight_layout()
+    plt.savefig("mmlu_pro_quant_binary_judge.png")
+    print("Saved plot")
+
 
 if __name__ == "__main__":
     main()
