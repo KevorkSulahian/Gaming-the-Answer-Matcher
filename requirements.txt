@@ -1,0 +1,13 @@
+pandas
+numpy
+torch
+transformers
+huggingface_hub
+datasets
+openai
+tqdm
+matplotlib
+seaborn
+python-dotenv
+pyarrow
+inspect-ai
